@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Playfair Display", serif;
+  --font-body: "DM Sans", sans-serif;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-body);
+    background-color: #0a0f1a;
+    color: #f1f5f9;
+  }
+  
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+  }
+  
+  .glow-teal {
+    box-shadow: 0 0 40px rgba(20, 184, 166, 0.15);
+  }
+  
+  .input-field {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background-color: rgba(30, 41, 59, 0.5);
+    border: 1px solid #334155;
+    color: #f1f5f9;
+    transition: all 0.3s ease;
+  }
+  
+  .input-field::placeholder {
+    color: #64748b;
+  }
+  
+  .input-field:focus {
+    outline: none;
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 1px #14b8a6;
+  }
+  
+  .btn-primary {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    color: #0a0f1a;
+    background: linear-gradient(to right, #2dd4bf, #14b8a6);
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 15px -3px rgba(20, 184, 166, 0.2);
+  }
+  
+  .btn-primary:hover {
+    background: linear-gradient(to right, #5eead4, #2dd4bf);
+    transform: scale(1.02);
+  }
+  
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+  
+  .stat-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 0 40px rgba(20, 184, 166, 0.15);
+  }
+  
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    color: #94a3b8;
+    transition: all 0.3s ease;
+  }
+  
+  .nav-link:hover {
+    color: #14b8a6;
+    background-color: rgba(30, 41, 59, 0.5);
+  }
+  
+  .nav-link.active {
+    color: #14b8a6;
+    background-color: rgba(20, 184, 166, 0.1);
+    border-left: 2px solid #14b8a6;
+  }
+}

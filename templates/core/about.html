@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Acerca de - Modelos Discretos y Continuos{% endblock %}
+
+{% block header_subtitle %}Información del proyecto{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-8 glow-teal" style="animation-delay: 0.1s;">
+        <h2 class="font-display text-3xl font-bold text-white mb-4">
+            Modelos Discretos y Continuos
+        </h2>
+        <p class="text-slate-400 text-lg leading-relaxed">
+            Aplicación web interactiva para el cálculo y visualización de distribuciones de probabilidad,
+            desarrollada como parte del curso de Modelación y Simulación.
+        </p>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.2s;">
+            <h3 class="font-display text-xl font-semibold text-white mb-4">Información del Estudiante</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between py-2 border-b border-slate-700/50">
+                    <span class="text-slate-400">Nombre</span>
+                    <span class="text-white">[Tu Nombre]</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-slate-700/50">
+                    <span class="text-slate-400">Carné</span>
+                    <span class="text-white">[Tu Carné]</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-slate-700/50">
+                    <span class="text-slate-400">Curso</span>
+                    <span class="text-white">Modelación y Simulación</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-slate-700/50">
+                    <span class="text-slate-400">Semestre</span>
+                    <span class="text-white">2026</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.3s;">
+            <h3 class="font-display text-xl font-semibold text-white mb-4">Entregas</h3>
+            <div class="space-y-3">
+                <div class="flex items-center gap-3 p-3 rounded-lg bg-teal-500/10 border border-teal-500/20">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span class="text-teal-300">Entrega 1: UI/UX y Formularios</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-lg bg-teal-500/10 border border-teal-500/20">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span class="text-teal-300">Entrega 2: Lógica Binomial</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

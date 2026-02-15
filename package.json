@@ -1,0 +1,25 @@
+{
+  "name": "modelos-simulacion",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "postcss-cli": "^11.0.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "autoprefixer": "^10.4.24",
+    "chart.js": "^4.5.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18"
+  },
+  "scripts": {
+    "build:css": "postcss ./static/css/main.css -o ./static/dist/output.css",
+    "watch:css": "postcss ./static/css/main.css -o ./static/dist/output.css --watch",
+    "dev": "bun run watch:css"
+  }
+}

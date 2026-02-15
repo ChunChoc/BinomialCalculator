@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+
+{% block title %}Distribución Binomial - Modelos{% endblock %}
+
+{% block header_subtitle %}Cálculo de probabilidades y estadísticas{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div class="xl:col-span-1">
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6 glow-teal" style="animation-delay: 0.1s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    Parámetros
+                </h3>
+                
+                <form method="post" class="space-y-5">
+                    {% csrf_token %}
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.n.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Tamaño de muestra (n)
+                        </label>
+                        {{ form.n }}
+                        {% if form.n.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.n.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">Número de ensayos independientes</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.p.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Probabilidad de éxito (p)
+                        </label>
+                        {{ form.p }}
+                        {% if form.p.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.p.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">Valor entre 0 y 1</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.x.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Número de éxitos (x)
+                            <span class="text-slate-500 font-normal">- Opcional</span>
+                        </label>
+                        {{ form.x }}
+                        {% if form.x.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.x.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">Para calcular P(X≤x) y ver rango</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.N.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Tamaño de población (N)
+                            <span class="text-slate-500 font-normal">- Opcional</span>
+                        </label>
+                        {{ form.N }}
+                        {% if form.N.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.N.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">Para población finita (factor de corrección)</p>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary w-full flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        Calcular
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="xl:col-span-2 space-y-6">
+            {% if results %}
+            <div class="animate-slide-up opacity-0" style="animation-delay: 0.2s;">
+                <div class="glass-panel rounded-xl p-6">
+                    <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        Distribución de Probabilidades
+                        {% if results.inputs.x is not None %}
+                        <span class="ml-auto text-sm font-normal text-teal-400">Resaltado: P(X ≤ {{ results.inputs.x }})</span>
+                        {% endif %}
+                    </h3>
+                    <div class="h-80">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.3s;">
+                    <p class="text-slate-400 text-sm">Media (μ)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.statistics.mean }}</p>
+                    <p class="text-slate-500 text-xs mt-1">E[n·p]</p>
+                </div>
+                
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.35s;">
+                    <p class="text-slate-400 text-sm">Desviación Estándar (σ)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.statistics.std }}</p>
+                    {% if results.statistics.adjusted_std %}
+                    <p class="text-teal-400 text-xs mt-1">Ajustada: {{ results.statistics.adjusted_std }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.4s;">
+                    <p class="text-slate-400 text-sm">Sesgo (γ₁)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.statistics.skewness }}</p>
+                    <p class="text-slate-500 text-xs mt-1">
+                        {% if results.statistics.skewness < -0.5 %}Izquierda{% elif results.statistics.skewness > 0.5 %}Derecha{% else %}Simétrica{% endif %}
+                    </p>
+                </div>
+                
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.45s;">
+                    <p class="text-slate-400 text-sm">Curtosis (γ₂)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.statistics.kurtosis }}</p>
+                    <p class="text-slate-500 text-xs mt-1">
+                        {% if results.statistics.kurtosis > 1 %}Leptocúrtica{% elif results.statistics.kurtosis < -1 %}Platicúrtica{% else %}Mesocúrtica{% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            {% if results.cumulative_prob_x %}
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.48s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Rango de Probabilidades P(X ≤ {{ results.inputs.x }})
+                </h3>
+                
+                <div class="mb-4 p-4 rounded-lg bg-gradient-to-r from-teal-500/20 to-teal-600/10 border border-teal-500/30">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-300">Probabilidad Acumulada</span>
+                        <span class="font-display text-2xl font-bold text-teal-400">{{ results.cumulative_prob_x }}%</span>
+                    </div>
+                </div>
+                
+                <div class="max-h-64 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-slate-800">
+                            <tr class="text-slate-400 border-b border-slate-700">
+                                <th class="py-2 px-3 text-left">x</th>
+                                <th class="py-2 px-3 text-right">P(X=x)</th>
+                                <th class="py-2 px-3 text-right">P(X≤x)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in results.range_probabilities %}
+                            <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
+                                <td class="py-2 px-3 text-white font-medium">x = {{ item.x }}</td>
+                                <td class="py-2 px-3 text-right text-slate-300">{{ item.p }}%</td>
+                                <td class="py-2 px-3 text-right text-teal-400">{{ item.cumulative }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.5s;">
+                    <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Resultados Detallados
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Tipo de Población</span>
+                            <span class="text-white font-medium {% if results.population_type == 'Finita' %}text-amber-400{% else %}text-teal-400{% endif %}">
+                                {{ results.population_type }}
+                            </span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Varianza (σ²)</span>
+                            <span class="text-white font-medium">{{ results.statistics.variance }}</span>
+                        </div>
+                        
+                        {% if results.statistics.correction_factor %}
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Factor de Corrección</span>
+                            <span class="text-amber-400 font-medium">{{ results.statistics.correction_factor }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if results.probability_x %}
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">P(X = {{ results.inputs.x }})</span>
+                            <span class="text-teal-400 font-medium">{{ results.probability_x_pct }}%</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if results.population_ratio %}
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Ratio n/N</span>
+                            <span class="text-white font-medium">{{ results.population_ratio|floatformat:4 }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.55s;">
+                    <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Interpretaciones
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-slate-400 text-sm mb-1">Sesgo (Asimetría)</p>
+                            <p class="text-slate-200 text-sm">{{ results.interpretations.skewness }}</p>
+                        </div>
+                        
+                        <div class="p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-slate-400 text-sm mb-1">Curtosis (Forma)</p>
+                            <p class="text-slate-200 text-sm">{{ results.interpretations.kurtosis }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% else %}
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-12 text-center" style="animation-delay: 0.2s;">
+                <div class="w-20 h-20 mx-auto rounded-full bg-slate-800/50 flex items-center justify-center mb-6">
+                    <svg class="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-display text-xl font-semibold text-white mb-2">
+                    Ingresa los Parámetros
+                </h3>
+                <p class="text-slate-400 max-w-md mx-auto">
+                    Completa el formulario con los valores de n y p para calcular la distribución binomial 
+                    y visualizar los resultados estadísticos.
+                </p>
+            </div>
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.3s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4">
+                    Fórmula de la Distribución Binomial
+                </h3>
+                <div class="bg-slate-800/50 rounded-lg p-6 text-center">
+                    <p class="font-display text-2xl text-teal-300">
+                        P(X = x) = C(n,x) · p<sup>x</sup> · (1-p)<sup>(n-x)</sup>
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    <div class="p-4 rounded-lg bg-slate-800/30">
+                        <p class="text-slate-400 text-sm">Media (Valor Esperado)</p>
+                        <p class="font-display text-lg text-white mt-1">μ = n · p</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-800/30">
+                        <p class="text-slate-400 text-sm">Varianza</p>
+                        <p class="font-display text-lg text-white mt-1">σ² = n · p · (1-p)</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if chart_data %}
+<script>
+(function() {
+    const chartData = {{ chart_data|safe }};
+    const ctx = document.getElementById('distributionChart').getContext('2d');
+    
+    const barColors = chartData.values.map((val, idx) => {
+        if (chartData.x_limit !== null && idx <= chartData.x_limit) {
+            return 'rgba(20, 184, 166, 0.9)';
+        }
+        return 'rgba(100, 116, 139, 0.4)';
+    });
+    
+    const borderColors = chartData.values.map((val, idx) => {
+        if (chartData.x_limit !== null && idx <= chartData.x_limit) {
+            return 'rgba(20, 184, 166, 1)';
+        }
+        return 'rgba(100, 116, 139, 0.6)';
+    });
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'P(X=x)',
+                    data: chartData.values,
+                    backgroundColor: barColors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    order: 2
+                },
+                {
+                    type: 'line',
+                    label: 'Curva de Distribución',
+                    data: chartData.values,
+                    borderColor: 'rgba(251, 191, 36, 0.8)',
+                    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: 'rgba(251, 191, 36, 1)',
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: '#94a3b8',
+                        font: { family: 'DM Sans', size: 12 },
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#e2e8f0',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(20, 184, 166, 0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            if (context.dataset.type === 'line') {
+                                return `Curva: ${context.raw.toFixed(4)}%`;
+                            }
+                            return `P(X=${context.dataIndex}): ${context.raw.toFixed(4)}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+                    ticks: {
+                        color: '#64748b',
+                        font: { family: 'DM Sans', size: 10 },
+                        maxRotation: 45,
+                        minRotation: 0
+                    },
+                    title: {
+                        display: true,
+                        text: 'Número de éxitos (x)',
+                        color: '#64748b',
+                        font: { family: 'DM Sans' }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+                    ticks: {
+                        color: '#64748b',
+                        font: { family: 'DM Sans' },
+                        callback: function(value) { return value + '%'; }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Probabilidad (%)',
+                        color: '#64748b',
+                        font: { family: 'DM Sans' }
+                    }
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

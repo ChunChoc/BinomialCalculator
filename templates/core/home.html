@@ -1,0 +1,334 @@
+{% extends 'base.html' %} {% block title %}Inicio - Modelos Discretos y
+Continuos{% endblock %} {% block header_subtitle %}Panel principal de
+simulación{% endblock %} {% block content %}
+<div class="space-y-8">
+    <div class="animate-slide-up opacity-0" style="animation-delay: 0.1s">
+        <div class="glass-panel rounded-2xl p-8 glow-teal">
+            <div class="flex items-start gap-6">
+                <div
+                    class="w-16 h-16 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center flex-shrink-0"
+                >
+                    <svg
+                        class="w-8 h-8 text-slate-950"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                        />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="font-display text-3xl font-bold text-white">
+                        Bienvenido al Simulador
+                    </h2>
+                    <p
+                        class="text-slate-400 mt-2 text-lg leading-relaxed max-w-2xl"
+                    >
+                        Esta aplicación permite calcular y visualizar diferentes
+                        distribuciones de probabilidad, incluyendo estadísticas
+                        descriptivas como media, desviación estándar, sesgo y
+                        curtosis.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <a
+            href="{% url 'distribuciones:binomial' %}"
+            class="animate-slide-up opacity-0 group stat-card hover:border-teal-500/50 transition-all duration-300"
+            style="animation-delay: 0.2s"
+        >
+            <div class="flex items-center justify-between mb-4">
+                <div
+                    class="w-12 h-12 rounded-lg bg-teal-500/20 flex items-center justify-center group-hover:bg-teal-500/30 transition-colors"
+                >
+                    <svg
+                        class="w-6 h-6 text-teal-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                        />
+                    </svg>
+                </div>
+                <span
+                    class="text-xs font-medium text-teal-400 bg-teal-500/20 px-2 py-1 rounded"
+                    >Activo</span
+                >
+            </div>
+            <h3
+                class="font-display text-xl font-semibold text-white group-hover:text-teal-300 transition-colors"
+            >
+                Distribución Binomial
+            </h3>
+            <p class="text-slate-400 text-sm mt-2">
+                Modela el número de éxitos en n ensayos independientes
+            </p>
+        </a>
+
+        <div
+            class="animate-slide-up opacity-0 stat-card opacity-60"
+            style="animation-delay: 0.3s"
+        >
+            <div class="flex items-center justify-between mb-4">
+                <div
+                    class="w-12 h-12 rounded-lg bg-amber-500/20 flex items-center justify-center"
+                >
+                    <svg
+                        class="w-6 h-6 text-amber-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                        />
+                    </svg>
+                </div>
+                <span
+                    class="text-xs font-medium text-amber-400 bg-amber-500/20 px-2 py-1 rounded"
+                    >Próximo</span
+                >
+            </div>
+            <h3 class="font-display text-xl font-semibold text-slate-300">
+                Distribución Proximamente
+            </h3>
+            <p class="text-slate-500 text-sm mt-2">Próximamente</p>
+        </div>
+
+        <div
+            class="animate-slide-up opacity-0 stat-card opacity-60"
+            style="animation-delay: 0.4s"
+        >
+            <div class="flex items-center justify-between mb-4">
+                <div
+                    class="w-12 h-12 rounded-lg bg-rose-500/20 flex items-center justify-center"
+                >
+                    <svg
+                        class="w-6 h-6 text-rose-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"
+                        />
+                    </svg>
+                </div>
+                <span
+                    class="text-xs font-medium text-rose-400 bg-rose-500/20 px-2 py-1 rounded"
+                    >Próximo</span
+                >
+            </div>
+            <h3 class="font-display text-xl font-semibold text-slate-300">
+                Distribución Proximamente
+            </h3>
+            <p class="text-slate-500 text-sm mt-2">Próximamente</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div
+            class="animate-slide-up opacity-0 glass-panel rounded-xl p-6"
+            style="animation-delay: 0.5s"
+        >
+            <h3 class="font-display text-lg font-semibold text-white mb-4">
+                Funcionalidades
+            </h3>
+            <ul class="space-y-3">
+                <li class="flex items-start gap-3">
+                    <svg
+                        class="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                        />
+                    </svg>
+                    <span class="text-slate-300"
+                        >Cálculo de probabilidades P(x)</span
+                    >
+                </li>
+                <li class="flex items-start gap-3">
+                    <svg
+                        class="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                        />
+                    </svg>
+                    <span class="text-slate-300"
+                        >Media y desviación estándar</span
+                    >
+                </li>
+                <li class="flex items-start gap-3">
+                    <svg
+                        class="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                        />
+                    </svg>
+                    <span class="text-slate-300"
+                        >Factor de corrección para población finita</span
+                    >
+                </li>
+                <li class="flex items-start gap-3">
+                    <svg
+                        class="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                        />
+                    </svg>
+                    <span class="text-slate-300"
+                        >Sesgo (Skewness) e interpretación</span
+                    >
+                </li>
+                <li class="flex items-start gap-3">
+                    <svg
+                        class="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                        />
+                    </svg>
+                    <span class="text-slate-300"
+                        >Curtosis (Kurtosis) e interpretación</span
+                    >
+                </li>
+                <li class="flex items-start gap-3">
+                    <svg
+                        class="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                        />
+                    </svg>
+                    <span class="text-slate-300"
+                        >Gráficos interactivos con Chart.js</span
+                    >
+                </li>
+            </ul>
+        </div>
+
+        <div
+            class="animate-slide-up opacity-0 glass-panel rounded-xl p-6"
+            style="animation-delay: 0.6s"
+        >
+            <h3 class="font-display text-lg font-semibold text-white mb-4">
+                Tecnologías
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div
+                    class="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50"
+                >
+                    <div
+                        class="w-10 h-10 rounded bg-green-500/20 flex items-center justify-center"
+                    >
+                        <span class="text-green-400 font-bold text-sm">Py</span>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">Django 6</p>
+                        <p class="text-slate-500 text-xs">Backend</p>
+                    </div>
+                </div>
+                <div
+                    class="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50"
+                >
+                    <div
+                        class="w-10 h-10 rounded bg-cyan-500/20 flex items-center justify-center"
+                    >
+                        <span class="text-cyan-400 font-bold text-sm">TS</span>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">TypeScript</p>
+                        <p class="text-slate-500 text-xs">Frontend</p>
+                    </div>
+                </div>
+                <div
+                    class="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50"
+                >
+                    <div
+                        class="w-10 h-10 rounded bg-teal-500/20 flex items-center justify-center"
+                    >
+                        <span class="text-teal-400 font-bold text-sm">TW</span>
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">TailwindCSS</p>
+                        <p class="text-slate-500 text-xs">Estilos</p>
+                    </div>
+                </div>
+                <div
+                    class="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50"
+                >
+                    <div
+                        class="w-10 h-10 rounded bg-orange-500/20 flex items-center justify-center"
+                    >
+                        <span class="text-orange-400 font-bold text-sm"
+                            >Bun</span
+                        >
+                    </div>
+                    <div>
+                        <p class="text-white font-medium">Bun</p>
+                        <p class="text-slate-500 text-xs">Runtime</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
