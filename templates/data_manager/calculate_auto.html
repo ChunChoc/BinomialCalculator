@@ -1,0 +1,520 @@
+{% extends 'base.html' %}
+
+{% block title %}Cálculo Automático - Modelos{% endblock %}
+
+{% block header_subtitle %}Selección automática de distribución basada en datos{% endblock %}
+
+{% block extra_css %}
+<style>
+.model-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+.model-badge-hyper {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.3) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+}
+.model-badge-binomial {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.2) 0%, rgba(13, 148, 136, 0.3) 100%);
+    border: 1px solid rgba(20, 184, 166, 0.4);
+    color: #2dd4bf;
+}
+.stat-card-auto {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.1);
+}
+.glow-auto { box-shadow: 0 0 40px rgba(139, 92, 246, 0.15); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div class="xl:col-span-1">
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6 glow-auto" style="animation-delay: 0.1s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Parámetros de Entrada
+                </h3>
+                
+                {% if analysis %}
+                <div class="mb-4 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                    <p class="text-violet-300 text-sm font-medium">Datos del archivo analizado:</p>
+                    <p class="text-white text-xs mt-1">N = {{ analysis.N }}, K = {{ analysis.K }} ({{ analysis.success_category }})</p>
+                    <p class="text-slate-400 text-xs mt-1">Columna: {{ analysis.column_name }}</p>
+                </div>
+                {% elif has_loaded_data %}
+                <div class="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <p class="text-amber-300 text-sm font-medium">Archivo cargado pero no analizado</p>
+                    <p class="text-slate-400 text-xs mt-1">Ve a "Cargar Datos" y selecciona una columna para analizar.</p>
+                    <a href="{% url 'data_manager:upload' %}" class="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 text-xs mt-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                        Ir a analizar
+                    </a>
+                </div>
+                {% else %}
+                <div class="mb-4 p-3 rounded-lg bg-slate-700/30 border border-slate-600/50">
+                    <p class="text-slate-300 text-sm font-medium">Sin datos cargados</p>
+                    <p class="text-slate-500 text-xs mt-1">Ingresa los parámetros manualmente o carga un archivo.</p>
+                    <a href="{% url 'data_manager:upload' %}" class="inline-flex items-center gap-1 text-violet-400 hover:text-violet-300 text-xs mt-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        Cargar archivo
+                    </a>
+                </div>
+                {% endif %}
+                
+                <form method="post" class="space-y-5">
+                    {% csrf_token %}
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.N.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Población total (N)
+                        </label>
+                        {{ form.N }}
+                        {% if form.N.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.N.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.K.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Éxitos en población (K)
+                        </label>
+                        {{ form.K }}
+                        {% if form.K.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.K.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.n.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Tamaño de muestra (n)
+                        </label>
+                        {{ form.n }}
+                        {% if form.n.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.n.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">El sistema seleccionará el modelo automáticamente</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="{{ form.x.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Éxitos esperados (x)
+                            <span class="text-slate-500 font-normal">- Opcional</span>
+                        </label>
+                        {{ form.x }}
+                        {% if form.x.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.x.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <button type="submit" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-slate-950 bg-gradient-to-r from-violet-400 to-violet-500 hover:from-violet-300 hover:to-violet-400 transition-all duration-300 shadow-lg shadow-violet-500/20">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Calcular Automáticamente
+                    </button>
+                </form>
+            </div>
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6 mt-6" style="animation-delay: 0.15s;">
+                <h4 class="text-white font-medium mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Regla de Decisión
+                </h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="model-badge-binomial text-xs py-1 px-2">Binomial</span>
+                        <span class="text-slate-400">si n/N &lt; 20%</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="model-badge-hyper text-xs py-1 px-2">Hipergeométrica</span>
+                        <span class="text-slate-400">si n/N ≥ 20%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="xl:col-span-2 space-y-6">
+            {% if results %}
+            
+            {% if results.model_decision %}
+            <div class="animate-slide-up opacity-0" style="animation-delay: 0.2s;">
+                <div class="glass-panel rounded-xl p-5 border-l-4 {% if results.model_decision.distribution_type == 'hypergeometric' %}border-amber-400 bg-gradient-to-r from-amber-500/5 to-transparent{% else %}border-teal-400 bg-gradient-to-r from-teal-500/5 to-transparent{% endif %}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="model-badge {% if results.model_decision.distribution_type == 'hypergeometric' %}model-badge-hyper{% else %}model-badge-binomial{% endif %}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                {{ results.model_decision.distribution_name }}
+                            </span>
+                            <span class="text-slate-400 text-sm">
+                                Ratio: <strong class="text-white">{{ results.model_decision.sample_ratio|floatformat:2 }}%</strong>
+                            </span>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded bg-slate-700 text-slate-300">
+                            Umbral: {{ results.model_decision.threshold }}%
+                        </span>
+                    </div>
+                    <p class="text-slate-300 text-sm mt-3">{{ results.model_decision.reason }}</p>
+                    {% if results.model_decision.recommendation %}
+                    <p class="text-amber-400/80 text-xs mt-2 italic">{{ results.model_decision.recommendation }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="animate-slide-up opacity-0" style="animation-delay: 0.25s;">
+                <div class="glass-panel rounded-xl p-6">
+                    <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        Distribución de Probabilidades
+                        {% if results.inputs.x is not None %}
+                        <span class="ml-auto text-sm font-normal text-violet-400">Resaltado: P(X ≤ {{ results.inputs.x }})</span>
+                        {% endif %}
+                    </h3>
+                    <div class="h-80">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="animate-slide-up opacity-0 stat-card-auto" style="animation-delay: 0.3s;">
+                    <p class="text-slate-400 text-sm">Media (μ)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.statistics.mean }}</p>
+                    <p class="text-slate-500 text-xs mt-1">Valor esperado</p>
+                </div>
+                
+                <div class="animate-slide-up opacity-0 stat-card-auto" style="animation-delay: 0.35s;">
+                    <p class="text-slate-400 text-sm">Desviación Estándar (σ)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.statistics.std }}</p>
+                    <p class="text-slate-500 text-xs mt-1">Dispersión</p>
+                </div>
+                
+                <div class="animate-slide-up opacity-0 stat-card-auto" style="animation-delay: 0.4s;">
+                    <p class="text-slate-400 text-sm">Sesgo (γ₁)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.statistics.skewness }}</p>
+                    <p class="text-slate-500 text-xs mt-1">
+                        {% if results.statistics.skewness < -0.5 %}Izquierda{% elif results.statistics.skewness > 0.5 %}Derecha{% else %}Simétrica{% endif %}
+                    </p>
+                </div>
+                
+                <div class="animate-slide-up opacity-0 stat-card-auto" style="animation-delay: 0.45s;">
+                    <p class="text-slate-400 text-sm">Curtosis (γ₂)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.statistics.kurtosis }}</p>
+                    <p class="text-slate-500 text-xs mt-1">
+                        {% if results.statistics.kurtosis > 1 %}Leptocúrtica{% elif results.statistics.kurtosis < -1 %}Platicúrtica{% else %}Mesocúrtica{% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            {% if results.cumulative_prob_x %}
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.48s;">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-display text-lg font-semibold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        Probabilidad Acumulada P(X ≤ {{ results.inputs.x }})
+                    </h3>
+                    <span class="font-display text-2xl font-bold text-violet-400">{{ results.cumulative_prob_x }}%</span>
+                </div>
+                
+                {% if results.range_probabilities %}
+                <div class="max-h-48 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-slate-800">
+                            <tr class="text-slate-400 border-b border-slate-700">
+                                <th class="py-2 px-3 text-left">x</th>
+                                <th class="py-2 px-3 text-right">P(X=x)</th>
+                                <th class="py-2 px-3 text-right">P(X≤x)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in results.range_probabilities %}
+                            <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
+                                <td class="py-2 px-3 text-white font-medium">x = {{ item.x }}</td>
+                                <td class="py-2 px-3 text-right text-slate-300">{{ item.p }}%</td>
+                                <td class="py-2 px-3 text-right text-violet-400">{{ item.cumulative }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.5s;">
+                    <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Resultados
+                    </h3>
+                    
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Población (N)</span>
+                            <span class="text-white font-medium">{{ results.inputs.N }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Éxitos en población (K)</span>
+                            <span class="text-white font-medium">{{ results.inputs.K }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Muestra (n)</span>
+                            <span class="text-white font-medium">{{ results.inputs.n }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Probabilidad (p)</span>
+                            <span class="text-white font-medium">{{ results.inputs.p }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Varianza (σ²)</span>
+                            <span class="text-white font-medium">{{ results.statistics.variance }}</span>
+                        </div>
+                        {% if results.probability_x %}
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">P(X = {{ results.inputs.x }})</span>
+                            <span class="text-violet-400 font-medium">{{ results.probability_x_pct }}%</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.55s;">
+                    <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Interpretaciones
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-slate-400 text-sm mb-1">Sesgo (Asimetría)</p>
+                            <p class="text-slate-200 text-sm">{{ results.interpretations.skewness }}</p>
+                        </div>
+                        
+                        <div class="p-3 rounded-lg bg-slate-800/50">
+                            <p class="text-slate-400 text-sm mb-1">Curtosis (Forma)</p>
+                            <p class="text-slate-200 text-sm">{{ results.interpretations.kurtosis }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% else %}
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-12 text-center" style="animation-delay: 0.2s;">
+                <div class="w-20 h-20 mx-auto rounded-full bg-slate-800/50 flex items-center justify-center mb-6">
+                    <svg class="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <h3 class="font-display text-xl font-semibold text-white mb-2">
+                    Ingresa los Parámetros
+                </h3>
+                <p class="text-slate-400 max-w-md mx-auto">
+                    El sistema seleccionará automáticamente la distribución correcta (Binomial o Hipergeométrica) 
+                    basándose en el ratio muestra/población.
+                </p>
+            </div>
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.3s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4">
+                    ¿Cómo Funciona la Selección Automática?
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="p-4 rounded-lg border border-teal-500/30 bg-teal-500/5">
+                        <h4 class="text-teal-400 font-medium mb-2 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Binomial (n/N &lt; 20%)
+                        </h4>
+                        <p class="text-slate-300 text-sm">
+                            Cuando la muestra es pequeña respecto a la población, el efecto del muestreo 
+                            sin reemplazo es despreciable. La Binomial es una buena aproximación.
+                        </p>
+                    </div>
+                    <div class="p-4 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                        <h4 class="text-amber-400 font-medium mb-2 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Hipergeométrica (n/N ≥ 20%)
+                        </h4>
+                        <p class="text-slate-300 text-sm">
+                            Con muestras grandes, el muestreo sin reemplazo afecta las probabilidades. 
+                            La Hipergeométrica es el modelo exacto.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if chart_data %}
+<script>
+(function() {
+    const chartData = {{ chart_data|safe }};
+    const ctx = document.getElementById('distributionChart').getContext('2d');
+    
+    const isHyper = chartData.distribution_type === 'hypergeometric';
+    const accentColor = isHyper ? 'rgba(245, 158, 11, 0.9)' : 'rgba(20, 184, 166, 0.9)';
+    const accentBorder = isHyper ? 'rgba(245, 158, 11, 1)' : 'rgba(20, 184, 166, 1)';
+    
+    const barColors = chartData.values.map((val, idx) => {
+        if (chartData.x_limit !== null && idx <= chartData.x_limit) {
+            return accentColor;
+        }
+        return 'rgba(100, 116, 139, 0.4)';
+    });
+    
+    const borderColors = chartData.values.map((val, idx) => {
+        if (chartData.x_limit !== null && idx <= chartData.x_limit) {
+            return accentBorder;
+        }
+        return 'rgba(100, 116, 139, 0.6)';
+    });
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'P(X=x)',
+                    data: chartData.values,
+                    backgroundColor: barColors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    order: 2
+                },
+                {
+                    type: 'line',
+                    label: 'Curva de Distribución',
+                    data: chartData.values,
+                    borderColor: 'rgba(139, 92, 246, 0.8)',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: 'rgba(139, 92, 246, 1)',
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: '#94a3b8',
+                        font: { family: 'DM Sans', size: 12 },
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#e2e8f0',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(139, 92, 246, 0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            if (context.dataset.type === 'line') {
+                                return `Curva: ${context.raw.toFixed(4)}%`;
+                            }
+                            return `P(X=${context.dataIndex}): ${context.raw.toFixed(4)}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+                    ticks: {
+                        color: '#64748b',
+                        font: { family: 'DM Sans', size: 10 },
+                        maxRotation: 45,
+                        minRotation: 0
+                    },
+                    title: {
+                        display: true,
+                        text: 'Número de éxitos (x)',
+                        color: '#64748b',
+                        font: { family: 'DM Sans' }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+                    ticks: {
+                        color: '#64748b',
+                        font: { family: 'DM Sans' },
+                        callback: function(value) { return value + '%'; }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Probabilidad (%)',
+                        color: '#64748b',
+                        font: { family: 'DM Sans' }
+                    }
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -192,9 +192,205 @@ class BinomialDistribution(BaseDistribution):
         }
 
 
+class HypergeometricParams(TypedDict, total=False):
+    N: int
+    K: int
+    n: int
+    x: Optional[int]
+
+
+class HypergeometricDistribution(BaseDistribution):
+    def __init__(self) -> None:
+        self.N: Optional[int] = None
+        self.K: Optional[int] = None
+        self.n: Optional[int] = None
+        self.x: Optional[int] = None
+    
+    def _validate_inputs(self, N: int, K: int, n: int, x: Optional[int] = None) -> None:
+        if N <= 0:
+            raise ValueError("El tamaño de la población (N) debe ser mayor que 0")
+        if K < 0:
+            raise ValueError("El número de éxitos en la población (K) no puede ser negativo")
+        if K > N:
+            raise ValueError("El número de éxitos en la población (K) no puede ser mayor que N")
+        if n <= 0:
+            raise ValueError("El tamaño de la muestra (n) debe ser mayor que 0")
+        if n > N:
+            raise ValueError("El tamaño de la muestra (n) no puede ser mayor que la población (N)")
+        if x is not None:
+            if x < 0:
+                raise ValueError("El número de éxitos en la muestra (x) no puede ser negativo")
+            if x > n:
+                raise ValueError(f"El número de éxitos en la muestra (x) no puede ser mayor que {n}")
+            if x > K:
+                raise ValueError(f"El número de éxitos en la muestra (x) no puede ser mayor que K={K}")
+    
+    def calculate_probability(self, N: int, K: int, n: int, x: int) -> float:
+        return float(stats.hypergeom.pmf(x, N, K, n))
+    
+    def calculate_mean(self, N: int, K: int, n: int) -> float:
+        return n * (K / N)
+    
+    def calculate_variance(self, N: int, K: int, n: int) -> float:
+        p = K / N
+        q = 1 - p
+        return n * p * q * ((N - n) / (N - 1))
+    
+    def calculate_std(self, N: int, K: int, n: int) -> float:
+        variance = self.calculate_variance(N, K, n)
+        return math.sqrt(variance)
+    
+    def calculate_skewness(self, N: int, K: int, n: int) -> float:
+        if N == 1:
+            return 0
+        p = K / N
+        q = 1 - p
+        numerator = (N - 2 * K) * math.sqrt(N - 1) * (N - 2 * n)
+        denominator = math.sqrt(n * K * (N - K) * (N - n)) * (N - 2)
+        if denominator == 0:
+            return 0
+        return numerator / denominator
+    
+    def calculate_kurtosis(self, N: int, K: int, n: int) -> float:
+        if N <= 3:
+            return 0
+        p = K / N
+        q = 1 - p
+        
+        term1 = (N - 1) * (N * (N + 1) - 6 * K * (N - K) * (N - n) / (n * (N - n)))
+        term2 = 3 * n * K * (N - K) * (N - n) / (n * (N - n))
+        numerator = term1 - term2
+        
+        denominator = n * K * (N - K) * (N - n) * (N - 2) * (N - 3) / (N - 1)
+        if denominator == 0:
+            return 0
+        
+        excess_kurtosis = (N + 1) * numerator / denominator
+        return excess_kurtosis
+    
+    def calculate_median(self, N: int, K: int, n: int) -> int:
+        mean = self.calculate_mean(N, K, n)
+        floor_mean = int(mean)
+        ceil_mean = floor_mean + 1
+        
+        prob_floor = self.calculate_probability(N, K, n, floor_mean)
+        prob_ceil = self.calculate_probability(N, K, n, ceil_mean) if ceil_mean <= min(n, K) else 0
+        
+        cumulative = 0
+        for x in range(min(n, K) + 1):
+            cumulative += self.calculate_probability(N, K, n, x)
+            if cumulative >= 0.5:
+                return x
+        return floor_mean
+    
+    def interpret_skewness_by_median(self, N: int, K: int, n: int) -> Tuple[str, float, float]:
+        mean = self.calculate_mean(N, K, n)
+        median = self.calculate_median(N, K, n)
+        
+        if mean < median - 0.1:
+            interpretation = "Sesgo Negativo (Asimetría izquierda): La media es menor que la mediana, indicando una cola más larga hacia valores menores."
+        elif mean > median + 0.1:
+            interpretation = "Sesgo Positivo (Asimetría derecha): La media es mayor que la mediana, indicando una cola más larga hacia valores mayores."
+        else:
+            interpretation = "Sesgo Nulo (Simétrica): La media y la mediana son aproximadamente iguales, indicando una distribución simétrica."
+        
+        return interpretation, round(mean, 6), median
+    
+    def interpret_kurtosis(self, kurtosis: float) -> str:
+        if kurtosis > 1:
+            return "Leptocúrtica: La distribución es más puntiaguda que una distribución normal (colas pesadas)."
+        elif kurtosis < -1:
+            return "Platicúrtica: La distribución es más plana que una distribución normal (colas ligeras)."
+        else:
+            return "Mesocúrtica: La distribución tiene una forma similar a la campana de Gauss."
+    
+    def calculate(self, **kwargs: Any) -> Dict[str, Any]:
+        N: int = kwargs.get('N')
+        K: int = kwargs.get('K')
+        n: int = kwargs.get('n')
+        x: Optional[int] = kwargs.get('x')
+        
+        self._validate_inputs(N, K, n, x)
+        
+        self.N = N
+        self.K = K
+        self.n = n
+        self.x = x
+        
+        p = K / N
+        
+        mean = self.calculate_mean(N, K, n)
+        variance = self.calculate_variance(N, K, n)
+        std = self.calculate_std(N, K, n)
+        skewness = self.calculate_skewness(N, K, n)
+        kurtosis = self.calculate_kurtosis(N, K, n)
+        
+        skewness_interp, mean_val, median_val = self.interpret_skewness_by_median(N, K, n)
+        
+        result: Dict[str, Any] = {
+            'inputs': {
+                'N': N,
+                'K': K,
+                'n': n,
+                'x': x,
+                'p': round(p, 6),
+            },
+            'population_type': 'Finita',
+            'sample_ratio': round(n / N, 4),
+            'statistics': {
+                'mean': round(mean, 6),
+                'median': median_val,
+                'variance': round(variance, 6),
+                'std': round(std, 6),
+                'skewness': round(skewness, 6),
+                'kurtosis': round(kurtosis, 6),
+            },
+            'interpretations': {
+                'skewness': skewness_interp,
+                'kurtosis': self.interpret_kurtosis(kurtosis),
+            },
+        }
+        
+        if x is not None:
+            result['probability_x'] = round(self.calculate_probability(N, K, n, x), 6)
+            result['probability_x_pct'] = round(self.calculate_probability(N, K, n, x) * 100, 4)
+        
+        return result
+    
+    def get_probabilities(self, **kwargs: Any) -> Tuple[List[int], List[float]]:
+        N: int = kwargs.get('N')
+        K: int = kwargs.get('K')
+        n: int = kwargs.get('n')
+        
+        max_x = min(n, K)
+        x_values = list(range(max_x + 1))
+        probabilities = [round(self.calculate_probability(N, K, n, x) * 100, 4) for x in x_values]
+        return x_values, probabilities
+    
+    def get_statistics(self, **kwargs: Any) -> Dict[str, Any]:
+        N: int = kwargs.get('N')
+        K: int = kwargs.get('K')
+        n: int = kwargs.get('n')
+        
+        mean = self.calculate_mean(N, K, n)
+        std = self.calculate_std(N, K, n)
+        skewness = self.calculate_skewness(N, K, n)
+        kurtosis = self.calculate_kurtosis(N, K, n)
+        _, mean_val, median_val = self.interpret_skewness_by_median(N, K, n)
+        
+        return {
+            'mean': round(mean, 6),
+            'median': median_val,
+            'std': round(std, 6),
+            'skewness': round(skewness, 6),
+            'kurtosis': round(kurtosis, 6),
+        }
+
+
 class DistributionFactory:
     _distributions: Dict[str, type[BaseDistribution]] = {
         'binomial': BinomialDistribution,
+        'hypergeometric': HypergeometricDistribution,
     }
     
     @classmethod

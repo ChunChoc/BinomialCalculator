@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',
     'distribuciones',
+    'data_manager',
 ]
 
 MIDDLEWARE = [

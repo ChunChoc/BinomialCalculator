@@ -1,0 +1,21 @@
+ID,Componente,Lote,Estado_Calidad
+1,Resistencia R1,L-101,Aprobado
+2,Resistencia R1,L-101,Aprobado
+3,Resistencia R1,L-101,Defectuoso
+4,Capacitor C2,L-101,Aprobado
+5,Capacitor C2,L-101,Aprobado
+6,Transistor T1,L-102,Aprobado
+7,Transistor T1,L-102,Defectuoso
+8,Resistencia R1,L-102,Aprobado
+9,Diodo D4,L-102,Aprobado
+10,Diodo D4,L-102,Aprobado
+11,Capacitor C2,L-103,Aprobado
+12,Resistencia R1,L-103,Defectuoso
+13,Transistor T1,L-103,Aprobado
+14,Transistor T1,L-103,Aprobado
+15,Diodo D4,L-103,Aprobado
+16,Resistencia R1,L-104,Defectuoso
+17,Capacitor C2,L-104,Aprobado
+18,Capacitor C2,L-104,Aprobado
+19,Resistencia R1,L-104,Defectuoso
+20,Diodo D4,L-104,Aprobado

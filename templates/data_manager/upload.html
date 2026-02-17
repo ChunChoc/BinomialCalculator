@@ -1,0 +1,660 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Datos - Modelos{% endblock %}
+
+{% block header_subtitle %}Carga y análisis de archivos Excel/CSV{% endblock %}
+
+{% block extra_css %}
+<style>
+.upload-zone {
+    border: 2px dashed rgba(148, 163, 184, 0.3);
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%);
+}
+.upload-zone:hover {
+    border-color: #14b8a6;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+.upload-zone.dragover {
+    border-color: #14b8a6;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%);
+    transform: scale(1.01);
+    box-shadow: 0 0 30px rgba(20, 184, 166, 0.2);
+}
+.upload-zone.has-file {
+    border-color: #22c55e;
+    border-style: solid;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.data-table th {
+    background: rgba(30, 41, 59, 0.8);
+    color: #94a3b8;
+    font-weight: 500;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.data-table td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    color: #e2e8f0;
+    font-size: 0.875rem;
+}
+.data-table tr:hover td {
+    background: rgba(30, 41, 59, 0.3);
+}
+.column-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+.column-chip-categorical {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+    border-color: rgba(139, 92, 246, 0.3);
+}
+.column-chip-numeric {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+.column-chip:hover {
+    transform: translateY(-1px);
+}
+.glow-purple { box-shadow: 0 0 40px rgba(139, 92, 246, 0.15); }
+.file-ready {
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+.code-block {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    overflow-x: auto;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div class="xl:col-span-1 space-y-6">
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6 glow-teal" style="animation-delay: 0.1s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    Cargar Archivo
+                </h3>
+                
+                <form method="post" enctype="multipart/form-data" id="upload-form">
+                    {% csrf_token %}
+                    
+                    <label for="id_data_file" class="upload-zone block p-8 text-center cursor-pointer" id="drop-zone">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-slate-800/50 flex items-center justify-center mb-4 transition-all" id="upload-icon">
+                            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="icon-svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <p class="text-slate-300 font-medium" id="file-name">
+                            Arrastra un archivo o haz clic
+                        </p>
+                        <p class="text-slate-500 text-sm mt-2" id="file-hint">
+                            Excel (.xlsx, .xls) o CSV
+                        </p>
+                        <p class="text-green-400 text-sm mt-2 hidden" id="file-size"></p>
+                        {{ upload_form.data_file }}
+                    </label>
+                    
+                    {% if upload_form.data_file.errors %}
+                    <p class="text-rose-400 text-sm mt-2">{{ upload_form.data_file.errors.0 }}</p>
+                    {% endif %}
+                    
+                    <button type="submit" class="btn-primary w-full mt-4 flex items-center justify-center gap-2 opacity-50 cursor-not-allowed" id="upload-btn" disabled>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                        <span id="btn-text">Selecciona un archivo</span>
+                    </button>
+                </form>
+            </div>
+            
+            {% if file_loaded %}
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.15s;">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-display text-lg font-semibold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Siguiente Paso
+                    </h3>
+                </div>
+                
+                {% if not analysis %}
+                <div class="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <p class="text-amber-300 text-sm font-medium flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        Paso requerido
+                    </p>
+                    <p class="text-slate-400 text-xs mt-1">Selecciona una columna y categoría abajo para poder calcular.</p>
+                </div>
+                {% endif %}
+                
+                <div class="space-y-3">
+                    {% if analysis %}
+                    <a href="{% url 'data_manager:calculate' %}" class="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 transition-all duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        Calcular (N={{ analysis.N }}, K={{ analysis.K }})
+                    </a>
+                    {% else %}
+                    <button disabled class="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium text-slate-500 bg-slate-700/50 cursor-not-allowed">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        Analiza una columna primero
+                    </button>
+                    {% endif %}
+                    
+                    <a href="{% url 'data_manager:clear_session' %}" class="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition-all duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        Limpiar Datos
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.2s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Formato Esperado
+                </h3>
+                
+                <p class="text-slate-400 text-sm mb-3">
+                    El archivo debe tener al menos una <strong class="text-violet-300">columna categórica</strong> 
+                    con valores que representen "éxito" vs "fracaso".
+                </p>
+                
+                <div class="code-block text-slate-300 mb-4">
+                    <p class="text-slate-500 mb-2"># Ejemplo CSV:</p>
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-teal-400">
+                                <th class="text-left pr-4">ID</th>
+                                <th class="text-left pr-4">Producto</th>
+                                <th class="text-left text-amber-400">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-slate-400">
+                            <tr><td>1</td><td>Prod A</td><td class="text-amber-400">Bueno</td></tr>
+                            <tr><td>2</td><td>Prod B</td><td class="text-rose-400">Defectuoso</td></tr>
+                            <tr><td>3</td><td>Prod C</td><td class="text-amber-400">Bueno</td></tr>
+                            <tr><td>...</td><td>...</td><td>...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center gap-2 text-slate-300">
+                        <svg class="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span><strong>N</strong> = Total de filas (población)</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-slate-300">
+                        <svg class="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span><strong>K</strong> = Filas con categoría "éxito"</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-slate-300">
+                        <svg class="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span><strong>p</strong> = K/N (probabilidad)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="xl:col-span-2 space-y-6">
+            {% if preview_data %}
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.2s;">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-display text-lg font-semibold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        Vista Previa de Datos
+                    </h3>
+                    <span class="text-sm text-slate-400">
+                        {{ preview_data.preview_rows }} de {{ preview_data.total_rows }} filas
+                    </span>
+                </div>
+                
+                <div class="overflow-x-auto max-h-96 rounded-lg border border-slate-700/50">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                {% for header in preview_data.headers %}
+                                <th>{{ header }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in preview_data.rows %}
+                            <tr>
+                                {% for cell in row %}
+                                <td>{{ cell|default:"-" }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if columns_info %}
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6 glow-purple" style="animation-delay: 0.25s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    Análisis de Columnas
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {% for col_name, col_info in columns_info.items %}
+                    <div class="p-4 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:border-slate-600 transition-colors">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-medium text-white truncate">{{ col_name }}</span>
+                            <span class="column-chip {% if col_info.type == 'categorical' %}column-chip-categorical{% else %}column-chip-numeric{% endif %} text-xs py-1 px-2">
+                                {% if col_info.type == 'categorical' %}
+                                    Categórica
+                                {% elif col_info.type == 'numeric' %}
+                                    Numérica
+                                {% else %}
+                                    Otro
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="text-sm text-slate-400 space-y-1">
+                            <p>Total: {{ col_info.total_rows }} | No nulos: {{ col_info.non_null_count }}</p>
+                            
+                            {% if col_info.type == 'categorical' %}
+                                <p>Categorías únicas: {{ col_info.unique_count }}</p>
+                                {% if col_info.unique_count <= 10 %}
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    {% for cat, count in col_info.value_counts.items %}
+                                    <span class="text-xs bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded">
+                                        {{ cat }}: {{ count }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            {% elif col_info.type == 'numeric' %}
+                                <p>Min: {{ col_info.min|floatformat:2 }} | Max: {{ col_info.max|floatformat:2 }}</p>
+                                <p>Media: {{ col_info.mean|floatformat:2 }} | Std: {{ col_info.std|floatformat:2 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.3s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                    Selección para Análisis
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">
+                                Columna a analizar
+                            </label>
+                            <select id="column-select" class="input-field">
+                                <option value="">-- Seleccionar --</option>
+                                {% for col_name, col_info in columns_info.items %}
+                                    {% if col_info.type == 'categorical' %}
+                                    <option value="{{ col_name }}">{{ col_name }} ({{ col_info.unique_count }} categorías)</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">
+                                Categoría de "Éxito"
+                            </label>
+                            <select id="category-select" class="input-field" disabled>
+                                <option value="">-- Primero seleccione columna --</option>
+                            </select>
+                        </div>
+                        
+                        <button type="button" id="analyze-btn" class="btn-primary w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed" disabled>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            Analizar Columna
+                        </button>
+                    </div>
+                    
+                    <div id="analysis-result" class="hidden">
+                        <div class="p-4 rounded-lg bg-gradient-to-br from-teal-500/20 to-teal-600/10 border border-teal-500/30">
+                            <h4 class="text-teal-400 font-medium mb-3 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Análisis Completado
+                            </h4>
+                            <div class="space-y-2 text-sm">
+                                <p class="flex justify-between">
+                                    <span class="text-slate-400">Población (N):</span>
+                                    <span class="text-white font-medium" id="result-n">-</span>
+                                </p>
+                                <p class="flex justify-between">
+                                    <span class="text-slate-400">Éxitos (K):</span>
+                                    <span class="text-white font-medium" id="result-k">-</span>
+                                </p>
+                                <p class="flex justify-between">
+                                    <span class="text-slate-400">Probabilidad (p):</span>
+                                    <span class="text-teal-400 font-medium" id="result-p">-</span>
+                                </p>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-teal-500/20">
+                                <a href="{% url 'data_manager:calculate' %}" class="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 text-sm">
+                                    Ir a calcular
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-12 text-center" style="animation-delay: 0.2s;">
+                <div class="w-20 h-20 mx-auto rounded-full bg-slate-800/50 flex items-center justify-center mb-6">
+                    <svg class="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-display text-xl font-semibold text-white mb-2">
+                    Carga un Archivo de Datos
+                </h3>
+                <p class="text-slate-400 max-w-md mx-auto">
+                    Sube un archivo Excel (.xlsx, .xls) o CSV para analizar los datos 
+                    y calcular distribuciones automáticamente.
+                </p>
+            </div>
+            
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.3s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4">
+                    Flujo de Trabajo
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 rounded-lg bg-slate-800/50 text-center">
+                        <div class="w-10 h-10 mx-auto rounded-full bg-teal-500/20 flex items-center justify-center mb-3">
+                            <span class="text-teal-400 font-bold">1</span>
+                        </div>
+                        <h4 class="text-white font-medium mb-1">Cargar</h4>
+                        <p class="text-slate-500 text-sm">Sube tu archivo Excel o CSV</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-800/50 text-center">
+                        <div class="w-10 h-10 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center mb-3">
+                            <span class="text-amber-400 font-bold">2</span>
+                        </div>
+                        <h4 class="text-white font-medium mb-1">Analizar</h4>
+                        <p class="text-slate-500 text-sm">Selecciona columna y categoría</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-800/50 text-center">
+                        <div class="w-10 h-10 mx-auto rounded-full bg-violet-500/20 flex items-center justify-center mb-3">
+                            <span class="text-violet-400 font-bold">3</span>
+                        </div>
+                        <h4 class="text-white font-medium mb-1">Calcular</h4>
+                        <p class="text-slate-500 text-sm">Obtén resultados automáticos</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('id_data_file');
+    const fileNameDisplay = document.getElementById('file-name');
+    const fileHint = document.getElementById('file-hint');
+    const fileSize = document.getElementById('file-size');
+    const uploadIcon = document.getElementById('upload-icon');
+    const uploadBtn = document.getElementById('upload-btn');
+    const btnText = document.getElementById('btn-text');
+    const columnSelect = document.getElementById('column-select');
+    const categorySelect = document.getElementById('category-select');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const analysisResult = document.getElementById('analysis-result');
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function updateUIForFile(file) {
+        if (!file) return;
+        
+        dropZone.classList.add('has-file');
+        fileNameDisplay.textContent = file.name;
+        fileNameDisplay.classList.add('text-green-400', 'font-semibold');
+        fileHint.classList.add('hidden');
+        fileSize.textContent = formatFileSize(file.size);
+        fileSize.classList.remove('hidden');
+        
+        uploadIcon.classList.add('bg-green-500/20');
+        uploadIcon.classList.remove('bg-slate-800/50');
+        
+        uploadBtn.disabled = false;
+        uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnText.textContent = 'Procesar Archivo';
+    }
+    
+    function resetUI() {
+        dropZone.classList.remove('has-file');
+        fileNameDisplay.textContent = 'Arrastra un archivo o haz clic';
+        fileNameDisplay.classList.remove('text-green-400', 'font-semibold');
+        fileHint.classList.remove('hidden');
+        fileSize.classList.add('hidden');
+        
+        uploadIcon.classList.remove('bg-green-500/20');
+        uploadIcon.classList.add('bg-slate-800/50');
+        
+        uploadBtn.disabled = true;
+        uploadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        btnText.textContent = 'Selecciona un archivo';
+    }
+    
+    if (dropZone && fileInput) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function() {
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function() {
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+        
+        dropZone.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                const validExtensions = ['.xlsx', '.xls', '.csv'];
+                const fileName = file.name.toLowerCase();
+                const isValid = validExtensions.some(ext => fileName.endsWith(ext));
+                
+                if (!isValid) {
+                    alert('Por favor selecciona un archivo Excel (.xlsx, .xls) o CSV');
+                    return;
+                }
+                
+                fileInput.files = files;
+                updateUIForFile(file);
+            }
+        });
+        
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                updateUIForFile(this.files[0]);
+            } else {
+                resetUI();
+            }
+        });
+    }
+    
+    if (columnSelect && categorySelect) {
+        columnSelect.addEventListener('change', function() {
+            const columnName = this.value;
+            
+            if (!columnName) {
+                categorySelect.disabled = true;
+                categorySelect.innerHTML = '<option value="">-- Primero seleccione columna --</option>';
+                analyzeBtn.disabled = true;
+                analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+            
+            categorySelect.disabled = true;
+            categorySelect.innerHTML = '<option value="">Cargando...</option>';
+            
+            fetch(`{% url 'data_manager:api_column_categories' %}?column=${encodeURIComponent(columnName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    categorySelect.innerHTML = '<option value="">-- Seleccionar categoría --</option>';
+                    
+                    if (data.categories) {
+                        data.categories.forEach(cat => {
+                            const option = document.createElement('option');
+                            option.value = cat;
+                            option.textContent = cat;
+                            categorySelect.appendChild(option);
+                        });
+                    }
+                    
+                    categorySelect.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    categorySelect.innerHTML = '<option value="">Error al cargar</option>';
+                });
+        });
+        
+        categorySelect.addEventListener('change', function() {
+            if (this.value) {
+                analyzeBtn.disabled = false;
+                analyzeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                analyzeBtn.disabled = true;
+                analyzeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        });
+    }
+    
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', function() {
+            const columnName = columnSelect.value;
+            const successCategory = categorySelect.value;
+            
+            if (!columnName || !successCategory) {
+                alert('Por favor seleccione una columna y categoría');
+                return;
+            }
+            
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Analizando...';
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const formData = new FormData();
+            formData.append('column_name', columnName);
+            formData.append('success_category', successCategory);
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            
+            fetch('{% url "data_manager:api_analyze_column" %}', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('result-n').textContent = data.analysis.N;
+                    document.getElementById('result-k').textContent = data.analysis.K;
+                    document.getElementById('result-p').textContent = (data.analysis.p * 100).toFixed(2) + '%';
+                    analysisResult.classList.remove('hidden');
+                } else {
+                    alert('Error: ' + (data.error || 'Error desconocido'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al analizar la columna');
+            })
+            .finally(() => {
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg> Analizar Columna';
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}
