@@ -187,6 +187,32 @@ class HypergeometricManualForm(forms.Form):
             'min_value': 'El valor debe ser al menos 0',
         }
     )
+
+    x_min = forms.IntegerField(
+        label='Éxitos mínimos (x_min)',
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Opcional - Ej: 5',
+        }),
+        error_messages={
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
+
+    x_max = forms.IntegerField(
+        label='Éxitos máximos (x_max)',
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Opcional - Ej: 15',
+        }),
+        error_messages={
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
     
     def clean(self):
         cleaned_data = super().clean()
@@ -194,6 +220,8 @@ class HypergeometricManualForm(forms.Form):
         K = cleaned_data.get('K')
         n = cleaned_data.get('n')
         x = cleaned_data.get('x')
+        x_min = cleaned_data.get('x_min')
+        x_max = cleaned_data.get('x_max')
         
         if K is not None and N is not None:
             if K > N:
@@ -208,5 +236,18 @@ class HypergeometricManualForm(forms.Form):
                 self.add_error('x', f'x no puede ser mayor que n={n}')
             if K is not None and x > K:
                 self.add_error('x', f'x no puede ser mayor que K={K}')
-        
+
+        max_success = None
+        if n is not None and K is not None:
+            max_success = min(n, K)
+
+        if x_min is not None and max_success is not None and x_min > max_success:
+            self.add_error('x_min', f'x_min no puede ser mayor que {max_success}')
+
+        if x_max is not None and max_success is not None and x_max > max_success:
+            self.add_error('x_max', f'x_max no puede ser mayor que {max_success}')
+
+        if x_min is not None and x_max is not None and x_min > x_max:
+            self.add_error('x_max', 'x_max debe ser mayor o igual que x_min')
+
         return cleaned_data

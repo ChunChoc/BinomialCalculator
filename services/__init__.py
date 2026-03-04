@@ -6,6 +6,7 @@ from .distributions import (
 )
 from .data_processor import DataProcessor, DataProcessingError
 from .model_selector import ModelSelector, ModelDecision, DistributionType
+from .acceptance_sampling import AcceptanceSamplingService
 
 __all__ = [
     'BaseDistribution', 
@@ -17,4 +18,5 @@ __all__ = [
     'ModelSelector',
     'ModelDecision',
     'DistributionType',
+    'AcceptanceSamplingService',
 ]

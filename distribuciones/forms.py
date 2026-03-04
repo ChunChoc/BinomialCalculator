@@ -44,6 +44,32 @@ class BinomialDistributionForm(forms.Form):
             'min_value': 'El valor debe ser al menos 0',
         }
     )
+
+    x_min = forms.IntegerField(
+        label='Éxitos mínimos (x_min)',
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Opcional - Ej: 10',
+        }),
+        error_messages={
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
+
+    x_max = forms.IntegerField(
+        label='Éxitos máximos (x_max)',
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Opcional - Ej: 20',
+        }),
+        error_messages={
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
     
     N = forms.IntegerField(
         label='Tamaño de la población (N)',
@@ -68,14 +94,158 @@ class BinomialDistributionForm(forms.Form):
         cleaned_data = super().clean()
         n = cleaned_data.get('n')
         x = cleaned_data.get('x')
+        x_min = cleaned_data.get('x_min')
+        x_max = cleaned_data.get('x_max')
         N = cleaned_data.get('N')
         
         if n is not None and x is not None:
             if x < 0 or x > n:
                 self.add_error('x', f'El número de éxitos (x) debe estar entre 0 y {n}')
+
+        if n is not None and x_min is not None and x_min > n:
+            self.add_error('x_min', f'El valor x_min debe estar entre 0 y {n}')
+
+        if n is not None and x_max is not None and x_max > n:
+            self.add_error('x_max', f'El valor x_max debe estar entre 0 y {n}')
+
+        if x_min is not None and x_max is not None and x_min > x_max:
+            self.add_error('x_max', 'x_max debe ser mayor o igual que x_min')
         
         if n is not None and N is not None:
             if n > N:
                 self.add_error('n', 'El tamaño de la muestra (n) no puede ser mayor que la población (N)')
         
+        return cleaned_data
+
+
+class AcceptanceSamplingForm(forms.Form):
+    N = forms.IntegerField(
+        label='Tamaño del Lote (N)',
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 5000',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'El valor debe ser al menos 1',
+        }
+    )
+
+    n = forms.IntegerField(
+        label='Tamaño de la Muestra (n)',
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 125',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'El valor debe ser al menos 1',
+        }
+    )
+
+    c = forms.IntegerField(
+        label='Número de Aceptación (c o X)',
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 5',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
+
+    p = forms.FloatField(
+        label='Proporción de Defectuosos (p)',
+        min_value=0.0,
+        max_value=1.0,
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 0.05',
+            'step': '0.0001',
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'El valor debe estar entre 0 y 1',
+            'max_value': 'El valor debe estar entre 0 y 1',
+        }
+    )
+
+    q = forms.FloatField(
+        label='Probabilidad de Fracaso / Proporción de Buenos (q)',
+        min_value=0.0,
+        max_value=1.0,
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 0.95',
+            'step': '0.0001',
+        }),
+        error_messages={
+            'min_value': 'El valor debe estar entre 0 y 1',
+            'max_value': 'El valor debe estar entre 0 y 1',
+        }
+    )
+
+    limite_tolerancia = forms.FloatField(
+        label='Límite de Tolerancia a buscar (%)',
+        min_value=0.0,
+        max_value=100.0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 95',
+            'step': '0.01',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'El valor debe estar entre 0 y 100',
+            'max_value': 'El valor debe estar entre 0 y 100',
+        }
+    )
+
+    def clean_p(self):
+        p = self.cleaned_data.get('p')
+        if p is not None:
+            return round(p, 6)
+        return p
+
+    def clean_limite_tolerancia(self):
+        limite_tolerancia = self.cleaned_data.get('limite_tolerancia')
+        if limite_tolerancia is not None:
+            return round(limite_tolerancia, 4)
+        return limite_tolerancia
+
+    def clean(self):
+        cleaned_data = super().clean()
+        N = cleaned_data.get('N')
+        n = cleaned_data.get('n')
+        c = cleaned_data.get('c')
+        p = cleaned_data.get('p')
+        q = cleaned_data.get('q')
+
+        if p is None and q is None:
+            self.add_error('p', 'Debe ingresar p o q')
+
+        if p is None and q is not None:
+            cleaned_data['p'] = round(1 - q, 6)
+            cleaned_data['q'] = round(q, 6)
+
+        if p is not None:
+            cleaned_data['p'] = round(p, 6)
+            cleaned_data['q'] = round(1 - p, 6)
+
+        if N is not None and n is not None and n > N:
+            self.add_error('n', 'El tamaño de la muestra (n) no puede ser mayor que el lote (N)')
+
+        if n is not None and c is not None and c > n:
+            self.add_error('c', f'El número de aceptación (c) debe estar entre 0 y {n}')
+
         return cleaned_data

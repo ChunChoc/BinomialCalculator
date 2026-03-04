@@ -224,7 +224,8 @@ def calculate_auto_view(request):
                 errors.append(f'Error inesperado: {str(e)}')
                 messages.error(request, f'Error inesperado: {str(e)}')
         else:
-            for field, field_errors in form.errors.items():
+            error_items = dict(form.errors) if form.errors else {}
+            for field, field_errors in error_items.items():
                 for error in field_errors:
                     errors.append(f'{field}: {error}')
                     messages.error(request, f'{field}: {error}')
@@ -265,34 +266,44 @@ def hypergeometric_view(request):
                 K = form.cleaned_data['K']
                 n = form.cleaned_data['n']
                 x = form.cleaned_data.get('x')
-                
-                distribution = DistributionFactory.create('hypergeometric')
-                results = distribution.calculate(N=N, K=K, n=n, x=x)
-                
+                x_min = form.cleaned_data.get('x_min')
+                x_max = form.cleaned_data.get('x_max')
+
                 decision = ModelSelector.decide(N, K, n)
+                distribution_type = decision.distribution_type.value
+
+                if distribution_type == DistributionType.BINOMIAL.value:
+                    dist_params = {'n': n, 'p': K / N, 'x': x, 'N': N}
+                else:
+                    dist_params = {'N': N, 'K': K, 'n': n, 'x': x}
+
+                distribution = DistributionFactory.create(distribution_type)
+                results = distribution.calculate(**dist_params)
+
                 results['model_decision'] = {
                     'distribution_type': decision.distribution_type.value,
-                    'distribution_name': 'Hipergeométrica',
+                    'distribution_name': 'Hipergeométrica' if decision.distribution_type == DistributionType.HYPERGEOMETRIC else 'Binomial',
                     'reason': decision.reason,
                     'sample_ratio': decision.sample_ratio,
                     'threshold': decision.threshold_used,
                 }
-                
-                x_values, probabilities = distribution.get_probabilities(N=N, K=K, n=n)
-                
+
+                get_probs_params = {k: v for k, v in dist_params.items() if k != 'x'}
+                x_values, probabilities = distribution.get_probabilities(**get_probs_params)
+
                 cumulative_probs = []
-                cumulative_sum = 0
+                cumulative_sum = 0.0
                 for prob in probabilities:
                     cumulative_sum += prob
                     cumulative_probs.append(round(cumulative_sum, 4))
-                
+
                 cumulative_prob_x = None
                 if x is not None:
                     if x < len(cumulative_probs):
                         cumulative_prob_x = cumulative_probs[x]
-                    
+
                     range_probs = []
-                    cum_sum = 0
+                    cum_sum = 0.0
                     for i in range(min(x + 1, len(x_values))):
                         prob = probabilities[i]
                         cum_sum += prob
@@ -303,6 +314,16 @@ def hypergeometric_view(request):
                         })
                     results['range_probabilities'] = range_probs
                     results['cumulative_prob_x'] = cumulative_prob_x
+
+                if x_min is not None and x_max is not None:
+                    range_probability = 0.0
+                    for idx in range(len(x_values)):
+                        current_x = x_values[idx]
+                        if x_min <= current_x <= x_max:
+                            range_probability += probabilities[idx]
+
+                    results['range_bounds'] = {'x_min': x_min, 'x_max': x_max}
+                    results['range_probability_pct'] = round(range_probability, 4)
                 
                 chart_data = {
                     'labels': [str(val) for val in x_values],
@@ -313,6 +334,7 @@ def hypergeometric_view(request):
                     'mean': results['statistics']['mean'],
                     'std': results['statistics']['std'],
                     'cumulative_prob_x': cumulative_prob_x,
+                    'distribution_type': distribution_type,
                 }
                 
                 messages.success(request, 'Cálculo realizado exitosamente')
@@ -324,10 +346,11 @@ def hypergeometric_view(request):
                 errors.append(f'Error inesperado: {str(e)}')
                 messages.error(request, f'Error inesperado: {str(e)}')
         else:
-            for field, field_errors in form.errors.items():
-                for error in field_errors:
-                    errors.append(f'{field}: {error}')
-                    messages.error(request, f'{field}: {error}')
+            if form.errors is not None:
+                for field, field_errors in form.errors.items():
+                    for error in field_errors:
+                        errors.append(f'{field}: {error}')
+                        messages.error(request, f'{field}: {error}')
     
     context = {
         'form': form,
