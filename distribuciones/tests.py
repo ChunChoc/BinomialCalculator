@@ -20,6 +20,15 @@ class AcceptanceSamplingServiceTests(TestCase):
         expected_index = min(range(len(cumulative)), key=lambda idx: abs(cumulative[idx] - tolerance_percent / 100))
         self.assertEqual(results['closest_tolerance']['index'], expected_index)
 
+    def test_acceptance_sampling_comparison_uses_20_percent_rule(self):
+        results = AcceptanceSamplingService.calculate(N=100, n=25, c=3, p=0.08, limite_tolerancia=90)
+
+        self.assertEqual(results['model_decision']['distribution_type'], 'hypergeometric')
+        self.assertEqual(results['model_decision']['threshold_percent'], 20.0)
+        self.assertIn('binomial', results['distribution_comparison'])
+        self.assertIn('hypergeometric', results['distribution_comparison'])
+        self.assertIn('difference', results['distribution_comparison'])
+
 
 class AutoSelectionIntegrationTests(TestCase):
     def test_binomial_page_switches_to_hypergeometric_when_ratio_is_high(self):

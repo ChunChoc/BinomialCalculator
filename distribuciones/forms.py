@@ -133,6 +133,19 @@ class AcceptanceSamplingForm(forms.Form):
         }
     )
 
+    K = forms.IntegerField(
+        label='Defectuosos en el Lote (K)',
+        min_value=0,
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 250',
+        }),
+        error_messages={
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
+
     n = forms.IntegerField(
         label='Tamaño de la Muestra (n)',
         min_value=1,
@@ -230,15 +243,25 @@ class AcceptanceSamplingForm(forms.Form):
         c = cleaned_data.get('c')
         p = cleaned_data.get('p')
         q = cleaned_data.get('q')
+        K = cleaned_data.get('K')
 
-        if p is None and q is None:
-            self.add_error('p', 'Debe ingresar p o q')
+        if K is not None and N is not None and K > N:
+            self.add_error('K', f'El número de defectuosos (K) no puede ser mayor que el lote (N)')
 
-        if p is None and q is not None:
+        if p is None and q is None and K is None:
+            self.add_error('p', 'Debe ingresar p, q o K')
+
+        if K is not None and N is not None:
+            if p is None:
+                cleaned_data['p'] = round(K / N, 6)
+                cleaned_data['q'] = round(1 - (K / N), 6)
+            else:
+                cleaned_data['p'] = round(p, 6)
+                cleaned_data['q'] = round(1 - p, 6)
+        elif p is None and q is not None:
             cleaned_data['p'] = round(1 - q, 6)
             cleaned_data['q'] = round(q, 6)
-
-        if p is not None:
+        elif p is not None:
             cleaned_data['p'] = round(p, 6)
             cleaned_data['q'] = round(1 - p, 6)
 

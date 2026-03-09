@@ -153,6 +153,7 @@ def acceptance_sampling_view(request):
                 n = form.cleaned_data['n']
                 c = form.cleaned_data['c']
                 p = form.cleaned_data['p']
+                K = form.cleaned_data.get('K')
                 limite_tolerancia = form.cleaned_data['limite_tolerancia']
 
                 results = AcceptanceSamplingService.calculate(
@@ -160,6 +161,7 @@ def acceptance_sampling_view(request):
                     n=n,
                     c=c,
                     p=p,
+                    K=K,
                     limite_tolerancia=limite_tolerancia,
                 )
 
