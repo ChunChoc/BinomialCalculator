@@ -138,6 +138,21 @@
             animation: slideUp 0.6s ease-out forwards;
             opacity: 0;
         }
+        
+        .toast-import {
+            animation: slideInRight 0.4s ease-out forwards;
+            opacity: 0;
+        }
+        
+        .toast-auto {
+            animation: slideUp 0.4s ease-out forwards;
+            opacity: 0;
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -246,9 +261,30 @@
             {% if messages %}
             <div class="px-8 pt-4 space-y-2">
                 {% for message in messages %}
-                <div class="animate-slide-up rounded-lg p-4 {% if message.tags == 'success' %}bg-teal-500/20 border border-teal-500/30 text-teal-300{% elif message.tags == 'error' %}bg-rose-500/20 border border-rose-500/30 text-rose-300{% else %}bg-slate-500/20 border border-slate-500/30 text-slate-300{% endif %}">
+                {% if 'success' in message.tags and 'importado' in message.tags %}
+                <div class="toast-auto animate-slide-up" role="alert">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>{{ message }}</span>
+                    </div>
+                    <button type="button" class="ml-auto -mx-1.5 p-1.5 text-emerald-300 hover:text-emerald-100" onclick="this.parentElement.remove()">
+                        <span class="sr-only">Cerrar</span>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+                {% elif 'error' in message.tags %}
+                <div class="animate-slide-up rounded-lg p-4 bg-rose-500/20 border border-rose-500/30 text-rose-300" role="alert">
                     {{ message }}
                 </div>
+                {% else %}
+                <div class="animate-slide-up rounded-lg p-4 bg-slate-500/20 border border-slate-500/30 text-slate-300" role="alert">
+                    {{ message }}
+                </div>
+                {% endif %}
                 {% endfor %}
             </div>
             {% endif %}

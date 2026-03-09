@@ -256,8 +256,145 @@ def hypergeometric_view(request):
     results = None
     chart_data = None
     errors = []
+    auto_calculated = False
     
-    if request.method == 'POST':
+    auto_params = {}
+    if request.method == 'GET':
+        N_param = request.GET.get('N')
+        K_param = request.GET.get('K')
+        n_param = request.GET.get('n')
+        x_param = request.GET.get('x')
+        auto_param = request.GET.get('auto')
+        
+        if N_param:
+            try:
+                auto_params['N'] = int(N_param)
+            except ValueError:
+                pass
+        if K_param:
+            try:
+                auto_params['K'] = int(K_param)
+            except ValueError:
+                pass
+        if n_param:
+            try:
+                auto_params['n'] = int(n_param)
+            except ValueError:
+                pass
+        if x_param:
+            try:
+                auto_params['x'] = int(x_param)
+            except ValueError:
+                pass
+        
+        if auto_param == '1' and auto_params.get('N') and auto_params.get('K') and auto_params.get('n'):
+            auto_calculated = True
+            post_data = {
+                'N': auto_params['N'],
+                'K': auto_params['K'],
+                'n': auto_params['n'],
+            }
+            if auto_params.get('x') is not None:
+                post_data['x'] = auto_params['x']
+            
+            form = HypergeometricManualForm(post_data)
+            
+            if form.is_valid():
+                try:
+                    N = form.cleaned_data['N']
+                    K = form.cleaned_data['K']
+                    n = form.cleaned_data['n']
+                    x = form.cleaned_data.get('x')
+                    x_min = form.cleaned_data.get('x_min')
+                    x_max = form.cleaned_data.get('x_max')
+
+                    decision = ModelSelector.decide(N, K, n)
+                    distribution_type = decision.distribution_type.value
+
+                    if distribution_type == DistributionType.BINOMIAL.value:
+                        dist_params = {'n': n, 'p': K / N, 'x': x, 'N': N}
+                    else:
+                        dist_params = {'N': N, 'K': K, 'n': n, 'x': x}
+
+                    distribution = DistributionFactory.create(distribution_type)
+                    results = distribution.calculate(**dist_params)
+
+                    results['model_decision'] = {
+                        'distribution_type': decision.distribution_type.value,
+                        'distribution_name': 'Hipergeométrica' if decision.distribution_type == DistributionType.HYPERGEOMETRIC else 'Binomial',
+                        'reason': decision.reason,
+                        'sample_ratio': decision.sample_ratio,
+                        'threshold': decision.threshold_used,
+                    }
+
+                    get_probs_params = {k: v for k, v in dist_params.items() if k != 'x'}
+                    x_values, probabilities = distribution.get_probabilities(**get_probs_params)
+
+                    cumulative_probs = []
+                    cumulative_sum = 0.0
+                    for prob in probabilities:
+                        cumulative_sum += prob
+                        cumulative_probs.append(round(cumulative_sum, 4))
+
+                    cumulative_prob_x = None
+                    if x is not None:
+                        if x < len(cumulative_probs):
+                            cumulative_prob_x = cumulative_probs[x]
+
+                        range_probs = []
+                        cum_sum = 0.0
+                        for i in range(min(x + 1, len(x_values))):
+                            prob = probabilities[i]
+                            cum_sum += prob
+                            range_probs.append({
+                                'x': x_values[i],
+                                'p': round(prob, 4),
+                                'cumulative': round(cum_sum, 4)
+                            })
+                        results['range_probabilities'] = range_probs
+                        results['cumulative_prob_x'] = cumulative_prob_x
+
+                    if x_min is not None and x_max is not None:
+                        range_probability = 0.0
+                        for idx in range(len(x_values)):
+                            current_x = x_values[idx]
+                            if x_min <= current_x <= x_max:
+                                range_probability += probabilities[idx]
+
+                        results['range_bounds'] = {'x_min': x_min, 'x_max': x_max}
+                        results['range_probability_pct'] = round(range_probability, 4)
+                    
+                    chart_data = {
+                        'labels': [str(val) for val in x_values],
+                        'values': probabilities,
+                        'cumulative': cumulative_probs,
+                        'x_values': x_values,
+                        'x_limit': x,
+                        'mean': results['statistics']['mean'],
+                        'std': results['statistics']['std'],
+                        'cumulative_prob_x': cumulative_prob_x,
+                        'distribution_type': distribution_type,
+                    }
+                    
+                    messages.success(request, 'Datos importados y calculados automáticamente desde el archivo.')
+                    
+                except ValueError as e:
+                    errors.append(str(e))
+                    messages.error(request, str(e))
+                except Exception as e:
+                    errors.append(f'Error inesperado: {str(e)}')
+                    messages.error(request, f'Error inesperado: {str(e)}')
+            else:
+                if form.errors is not None:
+                    for field, field_errors in form.errors.items():
+                        for error in field_errors:
+                            errors.append(f'{field}: {error}')
+                            messages.error(request, f'{field}: {error}')
+                form = HypergeometricManualForm(initial=auto_params)
+        elif auto_params:
+            form = HypergeometricManualForm(initial=auto_params)
+    
+    if request.method == 'POST' and not auto_calculated:
         form = HypergeometricManualForm(request.POST)
         
         if form.is_valid():
@@ -359,6 +496,7 @@ def hypergeometric_view(request):
         'errors': errors,
         'page_title': 'Distribución Hipergeométrica',
         'active_nav': 'hypergeometric',
+        'auto_calculated': auto_calculated,
     }
     
     return render(request, 'data_manager/hypergeometric.html', context)
