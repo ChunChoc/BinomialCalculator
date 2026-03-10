@@ -272,3 +272,94 @@ class AcceptanceSamplingForm(forms.Form):
             self.add_error('c', f'El número de aceptación (c) debe estar entre 0 y {n}')
 
         return cleaned_data
+
+
+class PoissonDistributionForm(forms.Form):
+    n = forms.IntegerField(
+        label='Tamaño de la muestra (n)',
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 100',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'El valor debe ser al menos 1',
+        }
+    )
+    
+    p = forms.FloatField(
+        label='Probabilidad de éxito (p)',
+        min_value=0.0,
+        max_value=1.0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 0.02',
+            'step': '0.0001',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'El valor debe estar entre 0 y 1',
+            'max_value': 'El valor debe estar entre 0 y 1',
+        }
+    )
+    
+    x = forms.IntegerField(
+        label='Número de eventos (x)',
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Opcional - Ej: 3',
+        }),
+        error_messages={
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
+
+    x_min = forms.IntegerField(
+        label='Eventos mínimos (x_min)',
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Opcional - Ej: 2',
+        }),
+        error_messages={
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
+
+    x_max = forms.IntegerField(
+        label='Eventos máximos (x_max)',
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Opcional - Ej: 5',
+        }),
+        error_messages={
+            'min_value': 'El valor debe ser al menos 0',
+        }
+    )
+    
+    def clean_p(self):
+        p = self.cleaned_data.get('p')
+        if p is not None:
+            p = round(p, 6)
+        return p
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        n = cleaned_data.get('n')
+        p = cleaned_data.get('p')
+        x = cleaned_data.get('x')
+        x_min = cleaned_data.get('x_min')
+        x_max = cleaned_data.get('x_max')
+        
+        if x_min is not None and x_max is not None and x_min > x_max:
+            self.add_error('x_max', 'x_max debe ser mayor o igual que x_min')
+        
+        return cleaned_data

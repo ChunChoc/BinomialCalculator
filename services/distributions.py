@@ -387,10 +387,186 @@ class HypergeometricDistribution(BaseDistribution):
         }
 
 
+class PoissonParams(TypedDict, total=False):
+    lambda_param: float
+    x: Optional[int]
+    x_min: Optional[int]
+    x_max: Optional[int]
+
+
+class PoissonDistribution(BaseDistribution):
+    def __init__(self) -> None:
+        self.lambda_param: Optional[float] = None
+        self.x: Optional[int] = None
+    
+    def _validate_inputs(self, lambda_param: float, x: Optional[int] = None) -> None:
+        if lambda_param <= 0:
+            raise ValueError("El parámetro lambda (λ) debe ser mayor que 0")
+        if x is not None and x < 0:
+            raise ValueError("El número de eventos (x) no puede ser negativo")
+    
+    def calculate_probability(self, lambda_param: float, x: int) -> float:
+        return float(stats.poisson.pmf(x, lambda_param))
+    
+    def calculate_mean(self, lambda_param: float) -> float:
+        return lambda_param
+    
+    def calculate_variance(self, lambda_param: float) -> float:
+        return lambda_param
+    
+    def calculate_std(self, lambda_param: float) -> float:
+        return math.sqrt(lambda_param)
+    
+    def calculate_skewness(self, lambda_param: float) -> float:
+        return 1 / math.sqrt(lambda_param)
+    
+    def calculate_kurtosis(self, lambda_param: float) -> float:
+        return 1 / lambda_param
+    
+    def calculate_median(self, lambda_param: float) -> int:
+        return int(math.floor(lambda_param + 1/3 - 0.02/lambda_param))
+    
+    def interpret_skewness(self, skewness: float, mean: float, median: float) -> Tuple[str, str, str]:
+        if skewness < -0.5:
+            interpretation = "Sesgo negativo significativo: La distribución tiene una cola más larga hacia la izquierda."
+            comparison = "Sesgo negativo (media < mediana)"
+        elif skewness > 0.5:
+            interpretation = "Sesgo positivo significativo: La distribución tiene una cola más larga hacia la derecha."
+            comparison = "Sesgo positivo (media > mediana)"
+        else:
+            interpretation = "Distribución aproximadamente simétrica."
+            if abs(mean - median) < 0.01:
+                comparison = "Sesgo nulo (media = mediana)"
+            elif mean < median:
+                comparison = "Sesgo negativo (media < mediana)"
+            else:
+                comparison = "Sesgo positivo (media > mediana)"
+        
+        label = "positivo" if skewness > 0.5 else ("negativo" if skewness < -0.5 else "nulo")
+        return interpretation, comparison, label
+    
+    def interpret_kurtosis(self, kurtosis: float) -> Tuple[str, str]:
+        if kurtosis < -0.5:
+            return "Platicúrtica: La distribución es más plana que una normal (colas ligeras).", "Platicúrtica"
+        elif kurtosis > 0.5:
+            return "Leptocúrtica: La distribución es más picuda que una normal (colas pesadas).", "Leptocúrtica"
+        else:
+            return "Mesocúrtica: La distribución tiene forma similar a la campana de Gauss.", "Mesocúrtica (campana de Gauss)"
+    
+    def calculate(self, **kwargs: Any) -> Dict[str, Any]:
+        lambda_param: float = kwargs.get('lambda_param')
+        x: Optional[int] = kwargs.get('x')
+        x_min: Optional[int] = kwargs.get('x_min')
+        x_max: Optional[int] = kwargs.get('x_max')
+        
+        self._validate_inputs(lambda_param, x)
+        
+        self.lambda_param = lambda_param
+        self.x = x
+        
+        mean = self.calculate_mean(lambda_param)
+        variance = self.calculate_variance(lambda_param)
+        std = self.calculate_std(lambda_param)
+        skewness = self.calculate_skewness(lambda_param)
+        kurtosis = self.calculate_kurtosis(lambda_param)
+        median = self.calculate_median(lambda_param)
+        
+        skewness_interp, skewness_comparison, skewness_label = self.interpret_skewness(skewness, mean, median)
+        kurtosis_interp, kurtosis_label = self.interpret_kurtosis(kurtosis)
+        
+        probability_x = None
+        probability_x_pct = None
+        cumulative_prob_x = None
+        range_probabilities = None
+        
+        if x is not None:
+            probability_x = self.calculate_probability(lambda_param, x)
+            probability_x_pct = round(probability_x * 100, 6)
+            cumulative_prob_x = float(stats.poisson.cdf(x, lambda_param))
+            
+            range_probs = []
+            cum_sum = 0.0
+            for i in range(x + 1):
+                prob = self.calculate_probability(lambda_param, i)
+                cum_sum += prob
+                range_probs.append({
+                    'x': i,
+                    'p': round(prob * 100, 4),
+                    'cumulative': round(cum_sum * 100, 4)
+                })
+            range_probabilities = range_probs
+        
+        range_probability = None
+        range_probability_pct = None
+        if x_min is not None and x_max is not None:
+            range_probability = float(stats.poisson.cdf(x_max, lambda_param) - stats.poisson.cdf(x_min - 1, lambda_param))
+            range_probability_pct = round(range_probability * 100, 4)
+        
+        result = {
+            'inputs': {
+                'lambda': round(lambda_param, 6),
+                'x': x,
+                'x_min': x_min,
+                'x_max': x_max,
+            },
+            'population_type': 'Poisson',
+            'statistics': {
+                'mean': round(mean, 6),
+                'median': median,
+                'variance': round(variance, 6),
+                'std': round(std, 6),
+                'skewness': round(skewness, 6),
+                'kurtosis': round(kurtosis, 6),
+            },
+            'interpretations': {
+                'skewness': skewness_interp,
+                'skewness_comparison': skewness_comparison,
+                'skewness_label': skewness_label,
+                'kurtosis': kurtosis_interp,
+                'kurtosis_label': kurtosis_label,
+            },
+            'probability_x': probability_x,
+            'probability_x_pct': probability_x_pct,
+            'cumulative_prob_x': cumulative_prob_x,
+            'range_probabilities': range_probabilities,
+            'range_probability_pct': range_probability_pct,
+        }
+        
+        return result
+    
+    def get_probabilities(self, **kwargs: Any) -> Tuple[List[int], List[float]]:
+        lambda_param: float = kwargs.get('lambda_param')
+        
+        max_x = int(lambda_param + 4 * math.sqrt(lambda_param)) + 1
+        max_x = max(max_x, 20)
+        
+        x_values = list(range(max_x + 1))
+        probabilities = [round(self.calculate_probability(lambda_param, x) * 100, 4) for x in x_values]
+        return x_values, probabilities
+    
+    def get_statistics(self, **kwargs: Any) -> Dict[str, Any]:
+        lambda_param: float = kwargs.get('lambda_param')
+        
+        mean = self.calculate_mean(lambda_param)
+        std = self.calculate_std(lambda_param)
+        skewness = self.calculate_skewness(lambda_param)
+        kurtosis = self.calculate_kurtosis(lambda_param)
+        median = self.calculate_median(lambda_param)
+        
+        return {
+            'mean': round(mean, 6),
+            'median': median,
+            'std': round(std, 6),
+            'skewness': round(skewness, 6),
+            'kurtosis': round(kurtosis, 6),
+        }
+
+
 class DistributionFactory:
     _distributions: Dict[str, type[BaseDistribution]] = {
         'binomial': BinomialDistribution,
         'hypergeometric': HypergeometricDistribution,
+        'poisson': PoissonDistribution,
     }
     
     @classmethod

@@ -7,7 +7,7 @@ from django.contrib import messages
 from services.distributions import DistributionFactory
 from services.acceptance_sampling import AcceptanceSamplingService
 from services.model_selector import ModelSelector, DistributionType
-from .forms import BinomialDistributionForm, AcceptanceSamplingForm
+from .forms import BinomialDistributionForm, AcceptanceSamplingForm, PoissonDistributionForm
 
 
 def binomial_view(request):
@@ -350,3 +350,129 @@ def acceptance_sampling_view(request):
     }
 
     return render(request, 'distribuciones/acceptance_sampling.html', context)
+
+
+def poisson_view(request):
+    form = PoissonDistributionForm()
+    results = None
+    chart_data = None
+    errors = []
+    auto_calculated = False
+    redirect_to_binomial = False
+    redirect_params = {}
+    
+    auto_params = {}
+    if request.method == 'GET':
+        n_param = request.GET.get('n')
+        p_param = request.GET.get('p')
+        x_param = request.GET.get('x')
+        auto_param = request.GET.get('auto')
+        
+        if n_param:
+            try:
+                auto_params['n'] = int(n_param)
+            except ValueError:
+                pass
+        if p_param:
+            try:
+                auto_params['p'] = float(p_param)
+            except ValueError:
+                pass
+        if x_param:
+            try:
+                auto_params['x'] = int(x_param)
+            except ValueError:
+                pass
+        
+        if auto_param == '1' and auto_params.get('n') and auto_params.get('p'):
+            auto_calculated = True
+            form = PoissonDistributionForm(auto_params)
+        elif auto_params:
+            form = PoissonDistributionForm(initial=auto_params)
+    
+    if request.method == 'POST' and not auto_calculated:
+        form = PoissonDistributionForm(request.POST)
+        
+        if form.is_valid():
+            try:
+                n = form.cleaned_data['n']
+                p = form.cleaned_data['p']
+                x = form.cleaned_data.get('x')
+                x_min = form.cleaned_data.get('x_min')
+                x_max = form.cleaned_data.get('x_max')
+                
+                mean = n * p
+                
+                if p >= 0.10 or mean >= 10:
+                    redirect_to_binomial = True
+                    redirect_params = {
+                        'n': n,
+                        'p': p,
+                        'x': x if x is not None else '',
+                        'auto': '1'
+                    }
+                    errors.append('redirect_binomial')
+                else:
+                    lambda_param = mean
+                    
+                    distribution = DistributionFactory.create('poisson')
+                    results = distribution.calculate(
+                        lambda_param=lambda_param,
+                        x=x,
+                        x_min=x_min,
+                        x_max=x_max
+                    )
+                    
+                    get_probs_params = {'lambda_param': lambda_param}
+                    x_values, probabilities = distribution.get_probabilities(**get_probs_params)
+                    
+                    cumulative_probs = []
+                    cumulative_sum = 0.0
+                    for prob in probabilities:
+                        cumulative_sum += prob
+                        cumulative_probs.append(round(cumulative_sum, 4))
+                    
+                    cumulative_prob_x = None
+                    if x is not None and x < len(cumulative_probs):
+                        cumulative_prob_x = cumulative_probs[x]
+                    
+                    chart_data = {
+                        'labels': [f'{i}' for i in x_values],
+                        'values': probabilities,
+                        'cumulative': cumulative_probs,
+                        'x_values': x_values,
+                        'x_limit': x,
+                        'mean': results['statistics']['mean'],
+                        'std': results['statistics']['std'],
+                        'cumulative_prob_x': cumulative_prob_x,
+                    }
+                    
+                    messages.success(request, 'Cálculo de distribución Poisson realizado exitosamente')
+                    
+            except ValueError as e:
+                errors.append(str(e))
+                messages.error(request, str(e))
+            except Exception as e:
+                errors.append(f'Error inesperado: {str(e)}')
+                messages.error(request, f'Error inesperado: {str(e)}')
+        else:
+            form_errors = form.errors
+            if form_errors:
+                for field, field_errors in form_errors.items():
+                    for error in field_errors:
+                        errors.append(f'{field}: {error}')
+                        messages.error(request, f'{field}: {error}')
+    
+    context = {
+        'form': form,
+        'results': results,
+        'chart_data': json.dumps(chart_data) if chart_data else None,
+        'errors': errors,
+        'page_title': 'Distribución de Poisson',
+        'active_nav': 'poisson',
+        'auto_calculated': auto_calculated,
+        'redirect_to_binomial': redirect_to_binomial,
+        'redirect_params': redirect_params,
+    }
+    
+    return render(request, 'distribuciones/poisson.html', context)

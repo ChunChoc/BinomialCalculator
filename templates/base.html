@@ -217,12 +217,11 @@
                     <span>Cargar Datos</span>
                 </a>
                 
-                <a href="#" class="nav-link opacity-50 cursor-not-allowed" onclick="return false;">
+                <a href="{% url 'distribuciones:poisson' %}" class="nav-link {% if active_nav == 'poisson' %}active{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                     </svg>
                     <span>Poisson</span>
-                    <span class="ml-auto text-xs bg-slate-700 px-2 py-0.5 rounded">Próximo</span>
                 </a>
                 
                 <a href="#" class="nav-link opacity-50 cursor-not-allowed" onclick="return false;">
