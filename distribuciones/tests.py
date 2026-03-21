@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from services.acceptance_sampling import AcceptanceSamplingService
+from services.distributions import DistributionFactory, HypergeometricDistribution
 
 
 class AcceptanceSamplingServiceTests(TestCase):
@@ -58,3 +59,58 @@ class AutoSelectionIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['results']['model_decision']['distribution_type'], 'binomial')
+
+
+class PoissonToleranceTests(TestCase):
+    def test_poisson_distribution_returns_closest_tolerance(self):
+        distribution = DistributionFactory.create('poisson')
+
+        results = distribution.calculate(lambda_param=3.2, limite_tolerancia=95)
+
+        self.assertIsNotNone(results['closest_tolerance'])
+
+        closest = results['closest_tolerance']
+        expected_x = min(
+            range(0, 30),
+            key=lambda current_x: abs(closest['tolerance'] - (distribution.calculate(lambda_param=3.2, x=current_x)['cumulative_prob_x'] * 100)),
+        )
+        self.assertEqual(closest['x'], expected_x)
+
+    def test_poisson_page_accepts_tolerance_input(self):
+        response: Any = self.client.post(
+            reverse('distribuciones:poisson'),
+            data={
+                'n': 100,
+                'p': 0.02,
+                'limite_tolerancia': 90,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.context['results']['closest_tolerance'])
+
+
+class HypergeometricPoissonComparisonTests(TestCase):
+    def test_hypergeometric_distribution_builds_poisson_comparison(self):
+        distribution = HypergeometricDistribution()
+
+        comparison = distribution.build_poisson_comparison(N=200, K=8, n=20, x=1)
+
+        self.assertEqual(comparison['lambda'], 0.8)
+        self.assertEqual(len(comparison['rows']), 9)
+        self.assertIsNotNone(comparison['poisson_probability_x_pct'])
+
+    def test_hypergeometric_page_shows_poisson_comparison(self):
+        response: Any = self.client.post(
+            reverse('data_manager:hypergeometric'),
+            data={
+                'N': 200,
+                'K': 8,
+                'n': 20,
+                'x': 1,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('poisson_comparison', response.context['results'])
+        self.assertContains(response, 'Comparación Hipergeométrica vs Poisson')

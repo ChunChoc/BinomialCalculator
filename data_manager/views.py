@@ -318,6 +318,7 @@ def hypergeometric_view(request):
 
                     distribution = DistributionFactory.create(distribution_type)
                     results = distribution.calculate(**dist_params)
+                    results['poisson_comparison'] = HypergeometricDistribution().build_poisson_comparison(N, K, n, x)
 
                     results['model_decision'] = {
                         'distribution_type': decision.distribution_type.value,
@@ -416,6 +417,7 @@ def hypergeometric_view(request):
 
                 distribution = DistributionFactory.create(distribution_type)
                 results = distribution.calculate(**dist_params)
+                results['poisson_comparison'] = HypergeometricDistribution().build_poisson_comparison(N, K, n, x)
 
                 results['model_decision'] = {
                     'distribution_type': decision.distribution_type.value,

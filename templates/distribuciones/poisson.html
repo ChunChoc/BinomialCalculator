@@ -76,6 +76,18 @@
                             {% endif %}
                         </div>
                     </div>
+
+                    <div class="space-y-2">
+                        <label for="{{ form.limite_tolerancia.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Límite de tolerancia (%)
+                            <span class="text-slate-500 font-normal">- Opcional</span>
+                        </label>
+                        {{ form.limite_tolerancia }}
+                        {% if form.limite_tolerancia.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.limite_tolerancia.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">Busca el valor acumulado P(X≤x) más cercano al porcentaje indicado</p>
+                    </div>
                     
                     <div class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
                         <p class="text-amber-300 text-xs">
@@ -158,7 +170,7 @@
                 </div>
             </div>
             
-            {% if results.cumulative_prob_x %}
+            {% if results.cumulative_prob_x is not None %}
             <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.48s;">
                 <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,7 +209,28 @@
             </div>
             {% endif %}
 
-            {% if results.range_probability_pct %}
+            {% if results.closest_tolerance %}
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.49s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-3">Tolerancia Más Cercana</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                        <p class="text-slate-400 text-sm">Tolerancia buscada</p>
+                        <p class="font-display text-2xl font-bold text-white mt-1">{{ results.closest_tolerance.tolerance }}%</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-gradient-to-r from-cyan-500/20 to-cyan-600/10 border border-cyan-500/30">
+                        <p class="text-slate-400 text-sm">x recomendado</p>
+                        <p class="font-display text-2xl font-bold text-cyan-300 mt-1">{{ results.closest_tolerance.x }}</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30">
+                        <p class="text-slate-400 text-sm">P(X≤x) encontrada</p>
+                        <p class="font-display text-2xl font-bold text-emerald-300 mt-1">{{ results.closest_tolerance.cumulative_probability }}%</p>
+                        <p class="text-slate-500 text-xs mt-1">Diferencia: {{ results.closest_tolerance.difference }}%</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if results.range_probability_pct is not None %}
             <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.49s;">
                 <h3 class="font-display text-lg font-semibold text-white mb-3">Probabilidad por Rango</h3>
                 <div class="p-4 rounded-lg bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30">
@@ -229,7 +262,7 @@
                             <span class="text-white font-medium">{{ results.statistics.variance }}</span>
                         </div>
                         
-                        {% if results.probability_x %}
+                        {% if results.probability_x is not None %}
                         <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
                             <span class="text-slate-400">P(X = {{ results.inputs.x }})</span>
                             <span class="text-teal-400 font-medium">{{ results.probability_x_pct }}%</span>
@@ -427,12 +460,18 @@ function closeRedirectModal() {
         if (chartData.x_limit !== null && idx <= chartData.x_limit) {
             return 'rgba(20, 184, 166, 0.9)';
         }
+        if (chartData.closest_tolerance_x !== null && idx === chartData.closest_tolerance_x) {
+            return 'rgba(34, 211, 238, 0.9)';
+        }
         return 'rgba(100, 116, 139, 0.4)';
     });
     
     const borderColors = chartData.values.map((val, idx) => {
         if (chartData.x_limit !== null && idx <= chartData.x_limit) {
             return 'rgba(20, 184, 166, 1)';
+        }
+        if (chartData.closest_tolerance_x !== null && idx === chartData.closest_tolerance_x) {
+            return 'rgba(34, 211, 238, 1)';
         }
         return 'rgba(100, 116, 139, 0.6)';
     });

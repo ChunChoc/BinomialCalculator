@@ -400,6 +400,7 @@ def poisson_view(request):
                 x = form.cleaned_data.get('x')
                 x_min = form.cleaned_data.get('x_min')
                 x_max = form.cleaned_data.get('x_max')
+                limite_tolerancia = form.cleaned_data.get('limite_tolerancia')
                 
                 mean = n * p
                 
@@ -420,7 +421,8 @@ def poisson_view(request):
                         lambda_param=lambda_param,
                         x=x,
                         x_min=x_min,
-                        x_max=x_max
+                        x_max=x_max,
+                        limite_tolerancia=limite_tolerancia,
                     )
                     
                     get_probs_params = {'lambda_param': lambda_param}
@@ -445,6 +447,7 @@ def poisson_view(request):
                         'mean': results['statistics']['mean'],
                         'std': results['statistics']['std'],
                         'cumulative_prob_x': cumulative_prob_x,
+                        'closest_tolerance_x': results['closest_tolerance']['x'] if results.get('closest_tolerance') else None,
                     }
                     
                     messages.success(request, 'Cálculo de distribución Poisson realizado exitosamente')

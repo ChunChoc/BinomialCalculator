@@ -344,12 +344,34 @@ class PoissonDistributionForm(forms.Form):
             'min_value': 'El valor debe ser al menos 0',
         }
     )
+
+    limite_tolerancia = forms.FloatField(
+        label='Límite de tolerancia (%)',
+        required=False,
+        min_value=0.0,
+        max_value=100.0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Opcional - Ej: 95',
+            'step': '0.01',
+        }),
+        error_messages={
+            'min_value': 'El valor debe estar entre 0 y 100',
+            'max_value': 'El valor debe estar entre 0 y 100',
+        }
+    )
     
     def clean_p(self):
         p = self.cleaned_data.get('p')
         if p is not None:
             p = round(p, 6)
         return p
+
+    def clean_limite_tolerancia(self):
+        limite_tolerancia = self.cleaned_data.get('limite_tolerancia')
+        if limite_tolerancia is not None:
+            return round(limite_tolerancia, 4)
+        return limite_tolerancia
     
     def clean(self):
         cleaned_data = super().clean()

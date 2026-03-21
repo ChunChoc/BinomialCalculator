@@ -282,6 +282,44 @@ class HypergeometricDistribution(BaseDistribution):
             if cumulative >= 0.5:
                 return x
         return floor_mean
+
+    def calculate_poisson_lambda(self, N: int, K: int, n: int) -> float:
+        return n * (K / N)
+
+    def build_poisson_comparison(self, N: int, K: int, n: int, x: Optional[int] = None) -> Dict[str, Any]:
+        lambda_param = self.calculate_poisson_lambda(N, K, n)
+        poisson_distribution = PoissonDistribution()
+
+        max_x = min(n, K)
+        comparison_rows = []
+        probability_x_pct = None
+        poisson_probability_x_pct = None
+        absolute_difference_pct = None
+
+        for current_x in range(max_x + 1):
+            hyper_probability = self.calculate_probability(N, K, n, current_x)
+            poisson_probability = poisson_distribution.calculate_probability(lambda_param, current_x)
+            difference = abs(hyper_probability - poisson_probability)
+
+            comparison_rows.append({
+                'x': current_x,
+                'hypergeometric_probability_pct': round(hyper_probability * 100, 6),
+                'poisson_probability_pct': round(poisson_probability * 100, 6),
+                'absolute_difference_pct': round(difference * 100, 6),
+            })
+
+            if x is not None and current_x == x:
+                probability_x_pct = round(hyper_probability * 100, 6)
+                poisson_probability_x_pct = round(poisson_probability * 100, 6)
+                absolute_difference_pct = round(difference * 100, 6)
+
+        return {
+            'lambda': round(lambda_param, 6),
+            'rows': comparison_rows,
+            'probability_x_pct': probability_x_pct,
+            'poisson_probability_x_pct': poisson_probability_x_pct,
+            'absolute_difference_pct': absolute_difference_pct,
+        }
     
     def interpret_skewness_by_median(self, N: int, K: int, n: int) -> Tuple[str, float, float]:
         mean = self.calculate_mean(N, K, n)
@@ -354,7 +392,9 @@ class HypergeometricDistribution(BaseDistribution):
         if x is not None:
             result['probability_x'] = round(self.calculate_probability(N, K, n, x), 6)
             result['probability_x_pct'] = round(self.calculate_probability(N, K, n, x) * 100, 4)
-        
+
+        result['poisson_comparison'] = self.build_poisson_comparison(N, K, n, x)
+         
         return result
     
     def get_probabilities(self, **kwargs: Any) -> Tuple[List[int], List[float]]:
@@ -392,6 +432,7 @@ class PoissonParams(TypedDict, total=False):
     x: Optional[int]
     x_min: Optional[int]
     x_max: Optional[int]
+    limite_tolerancia: Optional[float]
 
 
 class PoissonDistribution(BaseDistribution):
@@ -404,6 +445,38 @@ class PoissonDistribution(BaseDistribution):
             raise ValueError("El parámetro lambda (λ) debe ser mayor que 0")
         if x is not None and x < 0:
             raise ValueError("El número de eventos (x) no puede ser negativo")
+
+    def _find_closest_tolerance(self, lambda_param: float, limite_tolerancia: float) -> Dict[str, float]:
+        if limite_tolerancia < 0 or limite_tolerancia > 100:
+            raise ValueError('El límite de tolerancia debe estar entre 0 y 100')
+
+        tolerance_decimal = limite_tolerancia / 100
+        safety_quantile = max(tolerance_decimal, 0.999999)
+        max_x = int(stats.poisson.ppf(safety_quantile, lambda_param)) + 5
+        max_x = max(max_x, int(lambda_param + 10 * math.sqrt(lambda_param)) + 10, 20)
+
+        closest_x = 0
+        closest_cumulative = float(stats.poisson.cdf(0, lambda_param))
+        min_difference = abs(closest_cumulative - tolerance_decimal)
+
+        for current_x in range(1, max_x + 1):
+            cumulative = float(stats.poisson.cdf(current_x, lambda_param))
+            difference = abs(cumulative - tolerance_decimal)
+
+            if difference < min_difference:
+                min_difference = difference
+                closest_x = current_x
+                closest_cumulative = cumulative
+
+            if cumulative >= tolerance_decimal and difference > min_difference:
+                break
+
+        return {
+            'x': closest_x,
+            'cumulative_probability': round(closest_cumulative * 100, 6),
+            'difference': round(min_difference * 100, 6),
+            'tolerance': round(limite_tolerancia, 4),
+        }
     
     def calculate_probability(self, lambda_param: float, x: int) -> float:
         return float(stats.poisson.pmf(x, lambda_param))
@@ -458,6 +531,7 @@ class PoissonDistribution(BaseDistribution):
         x: Optional[int] = kwargs.get('x')
         x_min: Optional[int] = kwargs.get('x_min')
         x_max: Optional[int] = kwargs.get('x_max')
+        limite_tolerancia: Optional[float] = kwargs.get('limite_tolerancia')
         
         self._validate_inputs(lambda_param, x)
         
@@ -478,6 +552,7 @@ class PoissonDistribution(BaseDistribution):
         probability_x_pct = None
         cumulative_prob_x = None
         range_probabilities = None
+        closest_tolerance = None
         
         if x is not None:
             probability_x = self.calculate_probability(lambda_param, x)
@@ -501,6 +576,9 @@ class PoissonDistribution(BaseDistribution):
         if x_min is not None and x_max is not None:
             range_probability = float(stats.poisson.cdf(x_max, lambda_param) - stats.poisson.cdf(x_min - 1, lambda_param))
             range_probability_pct = round(range_probability * 100, 4)
+
+        if limite_tolerancia is not None:
+            closest_tolerance = self._find_closest_tolerance(lambda_param, limite_tolerancia)
         
         result = {
             'inputs': {
@@ -508,6 +586,7 @@ class PoissonDistribution(BaseDistribution):
                 'x': x,
                 'x_min': x_min,
                 'x_max': x_max,
+                'limite_tolerancia': limite_tolerancia,
             },
             'population_type': 'Poisson',
             'statistics': {
@@ -530,6 +609,7 @@ class PoissonDistribution(BaseDistribution):
             'cumulative_prob_x': cumulative_prob_x,
             'range_probabilities': range_probabilities,
             'range_probability_pct': range_probability_pct,
+            'closest_tolerance': closest_tolerance,
         }
         
         return result

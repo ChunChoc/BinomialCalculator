@@ -218,7 +218,7 @@
                 </div>
             </div>
             
-            {% if results.cumulative_prob_x %}
+            {% if results.cumulative_prob_x is not None %}
             <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.48s;">
                 <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,7 +256,51 @@
                 </div>
             </div>
             {% endif %}
-            
+
+            {% if results.poisson_comparison %}
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.49s;">
+                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+                    <div>
+                        <h3 class="font-display text-lg font-semibold text-white">Comparación Hipergeométrica vs Poisson</h3>
+                        <p class="text-slate-400 text-sm">Aproximación con λ = n·(K/N) = {{ results.poisson_comparison.lambda }}</p>
+                    </div>
+                    {% if results.inputs.x is not None %}
+                    <div class="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm">
+                        <span class="text-slate-300">Para x = {{ results.inputs.x }}:</span>
+                        <span class="ml-2 text-amber-300">Hipergeométrica {{ results.poisson_comparison.probability_x_pct }}%</span>
+                        <span class="mx-2 text-slate-500">|</span>
+                        <span class="text-cyan-300">Poisson {{ results.poisson_comparison.poisson_probability_x_pct }}%</span>
+                        <span class="mx-2 text-slate-500">|</span>
+                        <span class="text-slate-300">Dif. {{ results.poisson_comparison.absolute_difference_pct }}%</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="max-h-72 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-slate-800">
+                            <tr class="text-slate-400 border-b border-slate-700">
+                                <th class="py-2 px-3 text-left">x</th>
+                                <th class="py-2 px-3 text-right">Hipergeométrica</th>
+                                <th class="py-2 px-3 text-right">Poisson</th>
+                                <th class="py-2 px-3 text-right">Diferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in results.poisson_comparison.rows %}
+                            <tr class="border-b border-slate-700/50 hover:bg-slate-700/30 {% if results.inputs.x == item.x %}bg-cyan-500/5{% endif %}">
+                                <td class="py-2 px-3 text-white font-medium">x = {{ item.x }}</td>
+                                <td class="py-2 px-3 text-right text-amber-300">{{ item.hypergeometric_probability_pct }}%</td>
+                                <td class="py-2 px-3 text-right text-cyan-300">{{ item.poisson_probability_pct }}%</td>
+                                <td class="py-2 px-3 text-right text-slate-300">{{ item.absolute_difference_pct }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+             
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.5s;">
                     <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -292,7 +336,7 @@
                             <span class="text-white font-medium">{{ results.statistics.variance }}</span>
                         </div>
                         
-                        {% if results.probability_x %}
+                        {% if results.probability_x is not None %}
                         <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
                             <span class="text-slate-400">P(X = {{ results.inputs.x }})</span>
                             <span class="text-amber-400 font-medium">{{ results.probability_x_pct }}%</span>
