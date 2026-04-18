@@ -385,3 +385,77 @@ class PoissonDistributionForm(forms.Form):
             self.add_error('x_max', 'x_max debe ser mayor o igual que x_min')
         
         return cleaned_data
+
+
+class MM1QueueForm(forms.Form):
+    arrival_rate = forms.FloatField(
+        label='Tasa de llegada (lambda)',
+        min_value=0.0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 2.5',
+            'step': '0.0001',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'La tasa de llegada no puede ser negativa',
+        }
+    )
+
+    service_rate = forms.FloatField(
+        label='Tasa de servicio (mu)',
+        min_value=0.0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 4.0',
+            'step': '0.0001',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'La tasa de servicio no puede ser negativa',
+        }
+    )
+
+    n_clients = forms.IntegerField(
+        label='Numero de clientes (n)',
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'input-field',
+            'placeholder': 'Ej: 3',
+            'required': True,
+        }),
+        error_messages={
+            'required': 'Este campo es obligatorio',
+            'min_value': 'El numero de clientes no puede ser negativo',
+        }
+    )
+
+    def clean_arrival_rate(self):
+        arrival_rate = self.cleaned_data.get('arrival_rate')
+        if arrival_rate is not None:
+            return round(arrival_rate, 6)
+        return arrival_rate
+
+    def clean_service_rate(self):
+        service_rate = self.cleaned_data.get('service_rate')
+        if service_rate is not None:
+            return round(service_rate, 6)
+        return service_rate
+
+    def clean(self):
+        cleaned_data = super().clean()
+        arrival_rate = cleaned_data.get('arrival_rate')
+        service_rate = cleaned_data.get('service_rate')
+
+        if service_rate is not None and service_rate <= 0:
+            self.add_error('service_rate', 'La tasa de servicio (mu) debe ser mayor que 0')
+
+        if arrival_rate is not None and service_rate is not None and service_rate > 0 and service_rate <= arrival_rate:
+            self.add_error(
+                'service_rate',
+                'La tasa de servicio (mu) debe ser mayor que la tasa de llegada (lambda) para que el sistema sea estable',
+            )
+
+        return cleaned_data

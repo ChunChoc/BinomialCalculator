@@ -1,0 +1,470 @@
+{% extends 'base.html' %}
+
+{% block title %}Modelo M/M/1 - Colas de Espera{% endblock %}
+
+{% block header_subtitle %}Analisis del sistema de colas de un solo servidor{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div class="xl:col-span-1">
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6 glow-teal" style="animation-delay: 0.1s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    Parametros del Modelo
+                </h3>
+
+                <form method="post" class="space-y-5">
+                    {% csrf_token %}
+
+                    <div class="space-y-2">
+                        <label for="{{ form.arrival_rate.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Tasa de llegada (&lambda;)
+                        </label>
+                        {{ form.arrival_rate }}
+                        {% if form.arrival_rate.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.arrival_rate.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">Numero promedio de clientes que llegan por unidad de tiempo</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="{{ form.service_rate.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Tasa de servicio (&mu;)
+                        </label>
+                        {{ form.service_rate }}
+                        {% if form.service_rate.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.service_rate.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">Debe ser mayor que &lambda; para garantizar estabilidad</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="{{ form.n_clients.id_for_label }}" class="block text-sm font-medium text-slate-300">
+                            Numero de clientes (n)
+                        </label>
+                        {{ form.n_clients }}
+                        {% if form.n_clients.errors %}
+                        <p class="text-rose-400 text-xs mt-1">{{ form.n_clients.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-slate-500 text-xs">Se usa para calcular la probabilidad puntual Pn</p>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="rounded-lg p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+
+                    <div class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                        <p class="text-amber-300 text-xs">
+                            <strong>Condicion de estabilidad:</strong> &rho; = &lambda;/&mu; &lt; 1, por lo tanto &mu; debe ser mayor que &lambda;.
+                        </p>
+                    </div>
+
+                    <button type="submit" class="btn-primary w-full flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        Calcular M/M/1
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="xl:col-span-2 space-y-6">
+            {% if results %}
+            <div class="animate-slide-up opacity-0" style="animation-delay: 0.15s;">
+                <div class="glass-panel rounded-xl p-4 border-l-4 border-teal-400">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <span class="text-sm font-medium text-teal-400">
+                            Sistema estable con &rho; = {{ results.metrics.rho|floatformat:6 }}
+                        </span>
+                        <span class="text-xs text-slate-500">
+                            Margen de servicio: &mu; - &lambda; = {{ results.metrics.mu_minus_lambda|floatformat:6 }}
+                        </span>
+                    </div>
+                    <p class="text-slate-300 text-sm mt-2">{{ results.interpretation.recommendation }}</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.2s;">
+                    <p class="text-slate-400 text-sm">Utilizacion (&rho;)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.metrics.rho|floatformat:6 }}</p>
+                    <p class="text-teal-400 text-xs mt-1">{{ results.metrics.rho_pct|floatformat:4 }}%</p>
+                </div>
+
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.25s;">
+                    <p class="text-slate-400 text-sm">Sistema desocupado (P0)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.metrics.p0|floatformat:6 }}</p>
+                    <p class="text-teal-400 text-xs mt-1">{{ results.metrics.p0_pct|floatformat:4 }}%</p>
+                </div>
+
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.3s;">
+                    <p class="text-slate-400 text-sm">Longitud de cola (Lq)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.metrics.lq|floatformat:6 }}</p>
+                    <p class="text-slate-500 text-xs mt-1">Clientes promedio en cola</p>
+                </div>
+
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.35s;">
+                    <p class="text-slate-400 text-sm">Longitud del sistema (Ls)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.metrics.ls|floatformat:6 }}</p>
+                    <p class="text-slate-500 text-xs mt-1">Clientes promedio en el sistema</p>
+                </div>
+
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.4s;">
+                    <p class="text-slate-400 text-sm">Espera en cola (Wq)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.metrics.wq|floatformat:6 }}</p>
+                    <p class="text-slate-500 text-xs mt-1">Tiempo promedio en cola</p>
+                </div>
+
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.45s;">
+                    <p class="text-slate-400 text-sm">Espera total (Ws)</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.metrics.ws|floatformat:6 }}</p>
+                    <p class="text-slate-500 text-xs mt-1">Tiempo promedio en el sistema</p>
+                </div>
+
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.5s;">
+                    <p class="text-slate-400 text-sm">Probabilidad P{{ results.inputs.n_clients }}</p>
+                    <p class="font-display text-2xl font-bold text-white mt-1">{{ results.metrics.pn|floatformat:6 }}</p>
+                    <p class="text-teal-400 text-xs mt-1">{{ results.metrics.pn_pct|floatformat:4 }}%</p>
+                </div>
+
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.55s;">
+                    <p class="text-slate-400 text-sm">Nivel de ocupacion</p>
+                    <p class="font-display text-xl font-bold text-white mt-1">{{ results.interpretation.utilization_level }}</p>
+                    <p class="text-slate-500 text-xs mt-1">Basado en la intensidad de trafico</p>
+                </div>
+            </div>
+
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.6s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Distribucion de probabilidades del sistema
+                </h3>
+                <div class="h-80">
+                    <canvas id="probabilityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.65s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Sensibilidad del sistema al aumentar &lambda;
+                </h3>
+                <div class="h-80">
+                    <canvas id="congestionChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.7s;">
+                    <h3 class="font-display text-lg font-semibold text-white mb-4">Tabla de Resultados</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-slate-400 border-b border-slate-700">
+                                    <th class="py-2 px-3 text-left">Medida</th>
+                                    <th class="py-2 px-3 text-left">Formula</th>
+                                    <th class="py-2 px-3 text-right">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-slate-700/50">
+                                    <td class="py-2 px-3 text-white">&rho;</td>
+                                    <td class="py-2 px-3 text-slate-400">&lambda; / &mu;</td>
+                                    <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.rho|floatformat:6 }}</td>
+                                </tr>
+                                <tr class="border-b border-slate-700/50">
+                                    <td class="py-2 px-3 text-white">P0</td>
+                                    <td class="py-2 px-3 text-slate-400">1 - &rho;</td>
+                                    <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.p0|floatformat:6 }}</td>
+                                </tr>
+                                <tr class="border-b border-slate-700/50">
+                                    <td class="py-2 px-3 text-white">Lq</td>
+                                    <td class="py-2 px-3 text-slate-400">&lambda;<sup>2</sup> / (&mu;(&mu; - &lambda;))</td>
+                                    <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.lq|floatformat:6 }}</td>
+                                </tr>
+                                <tr class="border-b border-slate-700/50">
+                                    <td class="py-2 px-3 text-white">Ls</td>
+                                    <td class="py-2 px-3 text-slate-400">&lambda; / (&mu; - &lambda;)</td>
+                                    <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.ls|floatformat:6 }}</td>
+                                </tr>
+                                <tr class="border-b border-slate-700/50">
+                                    <td class="py-2 px-3 text-white">Wq</td>
+                                    <td class="py-2 px-3 text-slate-400">&lambda; / (&mu;(&mu; - &lambda;))</td>
+                                    <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.wq|floatformat:6 }}</td>
+                                </tr>
+                                <tr class="border-b border-slate-700/50">
+                                    <td class="py-2 px-3 text-white">Ws</td>
+                                    <td class="py-2 px-3 text-slate-400">1 / (&mu; - &lambda;)</td>
+                                    <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.ws|floatformat:6 }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-3 text-white">P{{ results.inputs.n_clients }}</td>
+                                    <td class="py-2 px-3 text-slate-400">P0 * &rho;<sup>n</sup></td>
+                                    <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.pn|floatformat:6 }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.75s;">
+                    <h3 class="font-display text-lg font-semibold text-white mb-4">Interpretacion</h3>
+                    <div class="space-y-4">
+                        <div class="p-4 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                            <p class="text-slate-400 text-sm mb-1">Lectura operativa</p>
+                            <p class="text-slate-200 text-sm">
+                                En promedio hay <strong class="text-teal-300">{{ results.metrics.lq|floatformat:6 }}</strong> clientes en cola y
+                                <strong class="text-teal-300">{{ results.metrics.ls|floatformat:6 }}</strong> clientes dentro del sistema.
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                            <p class="text-slate-400 text-sm mb-1">Lectura temporal</p>
+                            <p class="text-slate-200 text-sm">
+                                Cada cliente espera en promedio <strong class="text-amber-300">{{ results.metrics.wq|floatformat:6 }}</strong> unidades de tiempo en cola y
+                                <strong class="text-amber-300">{{ results.metrics.ws|floatformat:6 }}</strong> unidades de tiempo en el sistema.
+                            </p>
+                        </div>
+                        <div class="p-4 rounded-lg bg-slate-800/40 border border-slate-700/60">
+                            <p class="text-slate-400 text-sm mb-1">Probabilidad puntual</p>
+                            <p class="text-slate-200 text-sm">
+                                La probabilidad de observar exactamente <strong class="text-teal-300">{{ results.inputs.n_clients }}</strong> clientes en el sistema es
+                                <strong class="text-teal-300">{{ results.metrics.pn_pct|floatformat:4 }}%</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-12 text-center" style="animation-delay: 0.2s;">
+                <div class="w-20 h-20 mx-auto rounded-full bg-slate-800/50 flex items-center justify-center mb-6">
+                    <svg class="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="font-display text-xl font-semibold text-white mb-2">Ingresa los parametros del sistema</h3>
+                <p class="text-slate-400 max-w-2xl mx-auto">
+                    Completa el formulario con las tasas de llegada y servicio para calcular el comportamiento de una cola M/M/1,
+                    incluyendo utilizacion, tiempos de espera, longitudes esperadas y probabilidades de estado.
+                </p>
+            </div>
+
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.3s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-4">Formulas principales del modelo M/M/1</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-lg bg-slate-800/30">
+                        <p class="text-slate-400 text-sm">Utilizacion</p>
+                        <p class="font-display text-lg text-white mt-1">&rho; = &lambda; / &mu;</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-800/30">
+                        <p class="text-slate-400 text-sm">Sistema vacio</p>
+                        <p class="font-display text-lg text-white mt-1">P0 = 1 - &rho;</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-800/30">
+                        <p class="text-slate-400 text-sm">Longitud promedio de cola</p>
+                        <p class="font-display text-lg text-white mt-1">Lq = &lambda;<sup>2</sup> / (&mu;(&mu; - &lambda;))</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-800/30">
+                        <p class="text-slate-400 text-sm">Longitud promedio del sistema</p>
+                        <p class="font-display text-lg text-white mt-1">Ls = &lambda; / (&mu; - &lambda;)</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-800/30">
+                        <p class="text-slate-400 text-sm">Tiempo promedio en cola</p>
+                        <p class="font-display text-lg text-white mt-1">Wq = &lambda; / (&mu;(&mu; - &lambda;))</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-slate-800/30">
+                        <p class="text-slate-400 text-sm">Tiempo promedio en el sistema</p>
+                        <p class="font-display text-lg text-white mt-1">Ws = 1 / (&mu; - &lambda;)</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if chart_data %}
+<script>
+(function() {
+    const chartData = {{ chart_data|safe }};
+    const probabilityChartData = chartData.probability_chart;
+    const congestionChartData = chartData.congestion_chart;
+
+    const probabilityColors = probabilityChartData.probabilities.map((value, index) => {
+        if (index === probabilityChartData.selected_index) {
+            return 'rgba(20, 184, 166, 0.95)';
+        }
+        return 'rgba(100, 116, 139, 0.45)';
+    });
+
+    const probabilityBorders = probabilityChartData.probabilities.map((value, index) => {
+        if (index === probabilityChartData.selected_index) {
+            return 'rgba(45, 212, 191, 1)';
+        }
+        return 'rgba(148, 163, 184, 0.55)';
+    });
+
+    new Chart(document.getElementById('probabilityChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: probabilityChartData.labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'P(N = n) %',
+                    data: probabilityChartData.probabilities,
+                    backgroundColor: probabilityColors,
+                    borderColor: probabilityBorders,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    order: 2,
+                },
+                {
+                    type: 'line',
+                    label: 'Tendencia',
+                    data: probabilityChartData.probabilities,
+                    borderColor: 'rgba(251, 191, 36, 0.9)',
+                    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: 'rgba(251, 191, 36, 1)',
+                    order: 1,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#94a3b8'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: 'rgba(45, 212, 191, 0.35)',
+                    borderWidth: 1,
+                    titleColor: '#f8fafc',
+                    bodyColor: '#cbd5e1',
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                },
+                y: {
+                    ticks: {
+                        color: '#94a3b8',
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    },
+                    grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                }
+            }
+        }
+    });
+
+    const pointRadii = congestionChartData.labels.map((label, index) => {
+        if (index === congestionChartData.current_index) {
+            return 6;
+        }
+        return 3;
+    });
+
+    new Chart(document.getElementById('congestionChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: congestionChartData.labels,
+            datasets: [
+                {
+                    label: 'Lq',
+                    data: congestionChartData.queue_lengths,
+                    borderColor: 'rgba(45, 212, 191, 1)',
+                    backgroundColor: 'rgba(45, 212, 191, 0.12)',
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: pointRadii,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgba(45, 212, 191, 1)',
+                },
+                {
+                    label: 'Ls',
+                    data: congestionChartData.system_lengths,
+                    borderColor: 'rgba(251, 191, 36, 1)',
+                    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: pointRadii,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: 'rgba(251, 191, 36, 1)',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#94a3b8'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: 'rgba(251, 191, 36, 0.35)',
+                    borderWidth: 1,
+                    titleColor: '#f8fafc',
+                    bodyColor: '#cbd5e1',
+                    callbacks: {
+                        afterTitle: function(items) {
+                            const item = items[0];
+                            return 'lambda = ' + congestionChartData.lambda_values[item.dataIndex] + ' | mu = ' + congestionChartData.service_rate;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#94a3b8' },
+                    title: {
+                        display: true,
+                        text: 'Utilizacion del sistema',
+                        color: '#94a3b8'
+                    },
+                    grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                },
+                y: {
+                    ticks: { color: '#94a3b8' },
+                    title: {
+                        display: true,
+                        text: 'Clientes esperados',
+                        color: '#94a3b8'
+                    },
+                    grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                }
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

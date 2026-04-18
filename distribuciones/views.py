@@ -6,8 +6,9 @@ from django.contrib import messages
 
 from services.distributions import DistributionFactory
 from services.acceptance_sampling import AcceptanceSamplingService
+from services.mm1 import MM1Calculator
 from services.model_selector import ModelSelector, DistributionType
-from .forms import BinomialDistributionForm, AcceptanceSamplingForm, PoissonDistributionForm
+from .forms import BinomialDistributionForm, AcceptanceSamplingForm, PoissonDistributionForm, MM1QueueForm
 
 
 def binomial_view(request):
@@ -350,6 +351,57 @@ def acceptance_sampling_view(request):
     }
 
     return render(request, 'distribuciones/acceptance_sampling.html', context)
+
+
+@require_http_methods(["GET", "POST"])
+def mm1_queue_view(request):
+    form = MM1QueueForm()
+    results = None
+    chart_data = None
+    errors = []
+
+    if request.method == 'POST':
+        form = MM1QueueForm(request.POST)
+
+        if form.is_valid():
+            try:
+                calculator = MM1Calculator(
+                    arrival_rate=form.cleaned_data['arrival_rate'],
+                    service_rate=form.cleaned_data['service_rate'],
+                    n_clients=form.cleaned_data['n_clients'],
+                )
+
+                results = calculator.calculate()
+                chart_data = {
+                    'probability_chart': calculator.build_probability_chart(),
+                    'congestion_chart': calculator.build_congestion_chart(),
+                }
+
+                messages.success(request, 'Calculo del modelo M/M/1 realizado exitosamente')
+            except ValueError as e:
+                errors.append(str(e))
+                messages.error(request, str(e))
+            except Exception as e:
+                errors.append(f'Error inesperado: {str(e)}')
+                messages.error(request, f'Error inesperado: {str(e)}')
+        else:
+            form_errors = form.errors
+            if form_errors:
+                for field, field_errors in form_errors.items():
+                    for error in field_errors:
+                        errors.append(f'{field}: {error}')
+                        messages.error(request, f'{field}: {error}')
+
+    context = {
+        'form': form,
+        'results': results,
+        'chart_data': json.dumps(chart_data) if chart_data else None,
+        'errors': errors,
+        'page_title': 'Colas de Espera: Modelo M/M/1',
+        'active_nav': 'mm1_queue',
+    }
+
+    return render(request, 'distribuciones/mm1_form.html', context)
 
 
 def poisson_view(request):
