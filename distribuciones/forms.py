@@ -23,7 +23,7 @@ class BinomialDistributionForm(forms.Form):
         widget=forms.NumberInput(attrs={
             'class': 'input-field',
             'placeholder': 'Ej: 0.5',
-            'step': '0.0001',
+            'step': 'any',
             'required': True,
         }),
         error_messages={
@@ -182,7 +182,7 @@ class AcceptanceSamplingForm(forms.Form):
         widget=forms.NumberInput(attrs={
             'class': 'input-field',
             'placeholder': 'Ej: 0.05',
-            'step': '0.0001',
+            'step': 'any',
         }),
         error_messages={
             'required': 'Este campo es obligatorio',
@@ -199,7 +199,7 @@ class AcceptanceSamplingForm(forms.Form):
         widget=forms.NumberInput(attrs={
             'class': 'input-field',
             'placeholder': 'Ej: 0.95',
-            'step': '0.0001',
+            'step': 'any',
         }),
         error_messages={
             'min_value': 'El valor debe estar entre 0 y 1',
@@ -296,7 +296,7 @@ class PoissonDistributionForm(forms.Form):
         widget=forms.NumberInput(attrs={
             'class': 'input-field',
             'placeholder': 'Ej: 0.02',
-            'step': '0.0001',
+            'step': 'any',
             'required': True,
         }),
         error_messages={
@@ -394,7 +394,7 @@ class MM1QueueForm(forms.Form):
         widget=forms.NumberInput(attrs={
             'class': 'input-field',
             'placeholder': 'Ej: 2.5',
-            'step': '0.0001',
+            'step': 'any',
             'required': True,
         }),
         error_messages={
@@ -409,7 +409,7 @@ class MM1QueueForm(forms.Form):
         widget=forms.NumberInput(attrs={
             'class': 'input-field',
             'placeholder': 'Ej: 4.0',
-            'step': '0.0001',
+            'step': 'any',
             'required': True,
         }),
         error_messages={
