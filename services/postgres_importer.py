@@ -102,3 +102,36 @@ class PostgresImporter:
             )
 
         return pd.DataFrame(expanded_rows, columns=["escenario", "categoria"])
+
+    @staticmethod
+    def fetch_scenario_details(config: PostgresConfig, escenario_id: int) -> dict[str, Any]:
+        query = """
+            SELECT
+                er.id,
+                er.nombre,
+                er.lambda_h,
+                er.mu_h,
+                er.servidores_c,
+                er.rho,
+                er.wq,
+                er.w,
+                er.lq,
+                es.modo,
+                es.tiempo_minutos,
+                es.replicas
+            FROM escenario_resultado er
+            JOIN ejecucion_simulacion es ON es.id = er.ejecucion_id
+            WHERE er.id = %s
+        """
+        try:
+            with PostgresImporter._connect(config) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(query, (escenario_id,))
+                    row = cursor.fetchone()
+        except Exception as exc:
+            raise PostgresImportError(f"No se pudieron obtener detalles del escenario: {exc}") from exc
+
+        if not row:
+            raise PostgresImportError("Escenario no encontrado")
+
+        return dict(row)

@@ -72,6 +72,7 @@ def upload_view(request):
                     request.session['columns_info'] = columns_info
                     request.session['preview_data'] = preview_data
                     request.session['data_source'] = 'postgres'
+                    _save_pg_config_to_session(request, postgres_form)
 
                     messages.success(
                         request,
@@ -558,11 +559,21 @@ def hypergeometric_view(request):
     return render(request, 'data_manager/hypergeometric.html', context)
 
 
+def _save_pg_config_to_session(request, form):
+    request.session['pg_host'] = form.cleaned_data.get('pg_host', '')
+    request.session['pg_port'] = str(form.cleaned_data.get('pg_port', 5432))
+    request.session['pg_database'] = form.cleaned_data.get('pg_database', '')
+    request.session['pg_user'] = form.cleaned_data.get('pg_user', '')
+    request.session['pg_password'] = form.cleaned_data.get('pg_password', '')
+
+
 @require_http_methods(["POST"])
 def postgres_scenarios(request):
     form = PostgresImportForm(request.POST)
     if not form.is_valid():
         return JsonResponse({"errors": form.errors}, status=400)
+
+    _save_pg_config_to_session(request, form)
 
     try:
         config = _postgres_config_from_form(form)
@@ -572,8 +583,29 @@ def postgres_scenarios(request):
         return JsonResponse({"error": str(exc)}, status=400)
 
 
+@require_http_methods(["POST"])
+def postgres_scenario_detail(request):
+    form = PostgresImportForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({"errors": form.errors}, status=400)
+
+    _save_pg_config_to_session(request, form)
+
+    escenario_id = request.POST.get("pg_escenario_id")
+    if not escenario_id:
+        return JsonResponse({"error": "Debe seleccionar un escenario"}, status=400)
+
+    try:
+        config = _postgres_config_from_form(form)
+        details = PostgresImporter.fetch_scenario_details(config, int(escenario_id))
+        return JsonResponse({"scenario": details})
+    except PostgresImportError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+
 def clear_session(request):
-    keys_to_clear = ['dataframe_json', 'columns_info', 'preview_data', 'column_analysis', 'data_source']
+    keys_to_clear = ['dataframe_json', 'columns_info', 'preview_data', 'column_analysis', 'data_source',
+                     'pg_host', 'pg_port', 'pg_database', 'pg_user', 'pg_password']
     for key in keys_to_clear:
         if key in request.session:
             del request.session[key]

@@ -263,6 +263,24 @@
                         <p class="text-slate-400 text-sm mt-0.5">{% block header_subtitle %}{% endblock %}</p>
                     </div>
                     <div class="flex items-center gap-4">
+                        <!-- PostgreSQL Scenario Selector -->
+                        <div class="relative">
+                            <form id="header-pg-form" class="flex items-center gap-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="pg_host" id="header-pg-host" value="{{ request.session.pg_host|default:'' }}">
+                                <input type="hidden" name="pg_port" id="header-pg-port" value="{{ request.session.pg_port|default:'5432' }}">
+                                <input type="hidden" name="pg_database" id="header-pg-database" value="{{ request.session.pg_database|default:'' }}">
+                                <input type="hidden" name="pg_user" id="header-pg-user" value="{{ request.session.pg_user|default:'' }}">
+                                <input type="hidden" name="pg_password" id="header-pg-password" value="{{ request.session.pg_password|default:'' }}">
+                                <button type="button" id="header-pg-load-btn" class="px-3 py-1.5 rounded-lg text-sm font-medium text-violet-300 border border-violet-400/30 hover:bg-violet-500/10 transition-all duration-300">
+                                    Buscar escenarios
+                                </button>
+                                <select id="header-pg-scenarios" class="input-field text-sm py-1.5 px-3 hidden" style="width: 250px;">
+                                    <option value="">-- Seleccionar escenario --</option>
+                                </select>
+                            </form>
+                            <p id="header-pg-error" class="hidden absolute top-full right-0 mt-1 text-rose-400 text-xs bg-slate-800 px-2 py-1 rounded"></p>
+                        </div>
                         <span class="text-slate-400 text-sm">{% now "d/m/Y H:i" %}</span>
                     </div>
                 </div>
@@ -319,6 +337,124 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <script>
+    (function() {
+        // PostgreSQL Header Selector
+        const headerPgLoadBtn = document.getElementById('header-pg-load-btn');
+        const headerPgScenarios = document.getElementById('header-pg-scenarios');
+        const headerPgError = document.getElementById('header-pg-error');
+        const headerPgForm = document.getElementById('header-pg-form');
+
+        if (headerPgLoadBtn) {
+            headerPgLoadBtn.addEventListener('click', function() {
+                headerPgError.classList.add('hidden');
+                headerPgLoadBtn.disabled = true;
+                headerPgLoadBtn.textContent = 'Buscando...';
+
+                const formData = new FormData(headerPgForm);
+
+                fetch('/datos/api/postgres-scenarios/', {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok) {
+                        throw new Error(data.error || 'No se pudieron cargar escenarios');
+                    }
+
+                    headerPgScenarios.innerHTML = '<option value="">-- Seleccionar escenario --</option>';
+                    data.scenarios.forEach(scenario => {
+                        const option = document.createElement('option');
+                        option.value = scenario.id;
+                        option.textContent = `${scenario.nombre} | ${scenario.modo} | λ=${scenario.lambda_h} μ=${scenario.mu_h}`;
+                        option.dataset.lambda = scenario.lambda_h;
+                        option.dataset.mu = scenario.mu_h;
+                        option.dataset.rho = scenario.rho;
+                        option.dataset.wq = scenario.wq;
+                        option.dataset.w = scenario.w;
+                        option.dataset.lq = scenario.lq;
+                        headerPgScenarios.appendChild(option);
+                    });
+                    headerPgScenarios.classList.remove('hidden');
+                })
+                .catch(error => {
+                    headerPgError.textContent = error.message;
+                    headerPgError.classList.remove('hidden');
+                })
+                .finally(() => {
+                    headerPgLoadBtn.disabled = false;
+                    headerPgLoadBtn.textContent = 'Buscar escenarios';
+                });
+            });
+        }
+
+        if (headerPgScenarios) {
+            headerPgScenarios.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (!selectedOption.value) return;
+
+                const lambda = selectedOption.dataset.lambda;
+                const mu = selectedOption.dataset.mu;
+                const rho = selectedOption.dataset.rho;
+                const wq = selectedOption.dataset.wq;
+                const w = selectedOption.dataset.w;
+                const lq = selectedOption.dataset.lq;
+
+                // Determine current page and fill appropriate forms
+                const path = window.location.pathname;
+
+                // M/M/1 Queue page
+                if (path.includes('/colas/mm1/')) {
+                    const arrivalInput = document.getElementById('id_arrival_rate');
+                    const serviceInput = document.getElementById('id_service_rate');
+                    if (arrivalInput) arrivalInput.value = lambda;
+                    if (serviceInput) serviceInput.value = mu;
+                }
+                // Poisson page
+                else if (path.includes('/poisson/')) {
+                    const nInput = document.getElementById('id_n');
+                    const pInput = document.getElementById('id_p');
+                    if (nInput) nInput.value = '100';
+                    if (pInput) pInput.value = parseFloat(lambda) / 100;
+                }
+                // Binomial page
+                else if (path.includes('/binomial/')) {
+                    const nInput = document.getElementById('id_n');
+                    const pInput = document.getElementById('id_p');
+                    if (nInput) nInput.value = '100';
+                    if (pInput) pInput.value = parseFloat(rho || 0.5).toFixed(2);
+                }
+                // Acceptance Sampling page
+                else if (path.includes('/aceptacion-lotes/')) {
+                    const nInput = document.getElementById('id_n');
+                    const pInput = document.getElementById('id_p');
+                    const NInput = document.getElementById('id_N');
+                    if (nInput) nInput.value = '50';
+                    if (pInput) pInput.value = parseFloat(rho || 0.05).toFixed(2);
+                    if (NInput) NInput.value = '1000';
+                }
+                // Hypergeometric page
+                else if (path.includes('/hypergeometric/')) {
+                    const nInput = document.getElementById('id_n');
+                    const NInput = document.getElementById('id_N');
+                    const KInput = document.getElementById('id_K');
+                    if (nInput) nInput.value = '50';
+                    if (NInput) NInput.value = '1000';
+                    if (KInput) KInput.value = Math.round(1000 * parseFloat(rho || 0.1));
+                }
+
+                // Show success message
+                const event = new CustomEvent('scenario-selected', {
+                    detail: { lambda, mu, rho, wq, w, lq }
+                });
+                document.dispatchEvent(event);
+            });
+        }
+    })();
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

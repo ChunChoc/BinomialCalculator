@@ -9,5 +9,6 @@ urlpatterns = [
     path('api/column-categories/', views.get_column_categories, name='api_column_categories'),
     path('api/analyze-column/', views.analyze_column, name='api_analyze_column'),
     path('api/postgres-scenarios/', views.postgres_scenarios, name='api_postgres_scenarios'),
+    path('api/postgres-scenario-detail/', views.postgres_scenario_detail, name='api_postgres_scenario_detail'),
     path('clear/', views.clear_session, name='clear_session'),
 ]
