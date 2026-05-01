@@ -43,13 +43,21 @@ class PostgresImporter:
                 er.id,
                 er.nombre,
                 er.ejecucion_id,
+                er.lambda_h,
+                er.mu_h,
+                er.servidores_c,
+                er.rho,
+                er.wq,
+                er.w,
+                er.lq,
                 es.fecha,
                 es.modo,
                 COALESCE(SUM(ve.unidades_promedio), 0) AS total_unidades
             FROM escenario_resultado er
             JOIN ejecucion_simulacion es ON es.id = er.ejecucion_id
             LEFT JOIN ventas_escenario ve ON ve.escenario_id = er.id
-            GROUP BY er.id, er.nombre, er.ejecucion_id, es.fecha, es.modo
+            GROUP BY er.id, er.nombre, er.ejecucion_id, er.lambda_h, er.mu_h,
+                     er.servidores_c, er.rho, er.wq, er.w, er.lq, es.fecha, es.modo
             ORDER BY es.fecha DESC, er.id DESC
         """
         try:

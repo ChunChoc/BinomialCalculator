@@ -346,6 +346,15 @@
         const headerPgError = document.getElementById('header-pg-error');
         const headerPgForm = document.getElementById('header-pg-form');
 
+        function setInputValue(id, value) {
+            const input = document.getElementById(id);
+            if (input) {
+                input.value = value;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
         if (headerPgLoadBtn) {
             headerPgLoadBtn.addEventListener('click', function() {
                 headerPgError.classList.add('hidden');
@@ -368,13 +377,17 @@
                     data.scenarios.forEach(scenario => {
                         const option = document.createElement('option');
                         option.value = scenario.id;
-                        option.textContent = `${scenario.nombre} | ${scenario.modo} | λ=${scenario.lambda_h} μ=${scenario.mu_h}`;
-                        option.dataset.lambda = scenario.lambda_h;
-                        option.dataset.mu = scenario.mu_h;
-                        option.dataset.rho = scenario.rho;
-                        option.dataset.wq = scenario.wq;
-                        option.dataset.w = scenario.w;
-                        option.dataset.lq = scenario.lq;
+                        option.textContent = `${scenario.nombre} | ${scenario.modo} | λ=${scenario.lambda_h} μ=${scenario.mu_h} ρ=${scenario.rho}`;
+                        // Guardar todos los datos del escenario en dataset
+                        option.dataset.lambda = scenario.lambda_h || '';
+                        option.dataset.mu = scenario.mu_h || '';
+                        option.dataset.servidores = scenario.servidores_c || '';
+                        option.dataset.rho = scenario.rho || '';
+                        option.dataset.wq = scenario.wq || '';
+                        option.dataset.w = scenario.w || '';
+                        option.dataset.lq = scenario.lq || '';
+                        option.dataset.nombre = scenario.nombre || '';
+                        option.dataset.modo = scenario.modo || '';
                         headerPgScenarios.appendChild(option);
                     });
                     headerPgScenarios.classList.remove('hidden');
@@ -395,59 +408,82 @@
                 const selectedOption = this.options[this.selectedIndex];
                 if (!selectedOption.value) return;
 
-                const lambda = selectedOption.dataset.lambda;
-                const mu = selectedOption.dataset.mu;
-                const rho = selectedOption.dataset.rho;
-                const wq = selectedOption.dataset.wq;
-                const w = selectedOption.dataset.w;
-                const lq = selectedOption.dataset.lq;
+                const lambda = parseFloat(selectedOption.dataset.lambda || 0);
+                const mu = parseFloat(selectedOption.dataset.mu || 0);
+                const servidores = parseInt(selectedOption.dataset.servidores || 1);
+                const rho = parseFloat(selectedOption.dataset.rho || 0);
+                const wq = parseFloat(selectedOption.dataset.wq || 0);
+                const w = parseFloat(selectedOption.dataset.w || 0);
+                const lq = parseFloat(selectedOption.dataset.lq || 0);
 
-                // Determine current page and fill appropriate forms
                 const path = window.location.pathname;
 
                 // M/M/1 Queue page
                 if (path.includes('/colas/mm1/')) {
-                    const arrivalInput = document.getElementById('id_arrival_rate');
-                    const serviceInput = document.getElementById('id_service_rate');
-                    if (arrivalInput) arrivalInput.value = lambda;
-                    if (serviceInput) serviceInput.value = mu;
+                    setInputValue('id_arrival_rate', lambda.toFixed(6));
+                    setInputValue('id_service_rate', mu.toFixed(6));
+                    setInputValue('id_n_clients', '');
                 }
                 // Poisson page
                 else if (path.includes('/poisson/')) {
-                    const nInput = document.getElementById('id_n');
-                    const pInput = document.getElementById('id_p');
-                    if (nInput) nInput.value = '100';
-                    if (pInput) pInput.value = parseFloat(lambda) / 100;
+                    const n = 100;
+                    const p = lambda / n;
+                    setInputValue('id_n', n);
+                    setInputValue('id_p', p.toFixed(6));
+                    setInputValue('id_x', '');
+                    setInputValue('id_x_min', '');
+                    setInputValue('id_x_max', '');
+                    setInputValue('id_limite_tolerancia', '');
                 }
                 // Binomial page
                 else if (path.includes('/binomial/')) {
-                    const nInput = document.getElementById('id_n');
-                    const pInput = document.getElementById('id_p');
-                    if (nInput) nInput.value = '100';
-                    if (pInput) pInput.value = parseFloat(rho || 0.5).toFixed(2);
+                    const n = 100;
+                    const p = rho > 0 && rho < 1 ? rho : (lambda / (mu || 1));
+                    const safeP = Math.max(0.01, Math.min(0.99, p));
+                    setInputValue('id_n', n);
+                    setInputValue('id_p', safeP.toFixed(6));
+                    setInputValue('id_x', '');
+                    setInputValue('id_x_min', '');
+                    setInputValue('id_x_max', '');
+                    setInputValue('id_N', '');
                 }
                 // Acceptance Sampling page
                 else if (path.includes('/aceptacion-lotes/')) {
-                    const nInput = document.getElementById('id_n');
-                    const pInput = document.getElementById('id_p');
-                    const NInput = document.getElementById('id_N');
-                    if (nInput) nInput.value = '50';
-                    if (pInput) pInput.value = parseFloat(rho || 0.05).toFixed(2);
-                    if (NInput) NInput.value = '1000';
+                    const N = 1000;
+                    const p = rho > 0 && rho < 1 ? rho : 0.05;
+                    const n = Math.round(N * 0.05);
+                    const K = Math.round(N * p);
+                    const c = Math.round(n * p);
+                    const q = 1 - p;
+                    setInputValue('id_N', N);
+                    setInputValue('id_K', K);
+                    setInputValue('id_n', n);
+                    setInputValue('id_c', c);
+                    setInputValue('id_p', p.toFixed(6));
+                    setInputValue('id_q', q.toFixed(6));
+                    setInputValue('id_limite_tolerancia', '');
                 }
                 // Hypergeometric page
                 else if (path.includes('/hypergeometric/')) {
-                    const nInput = document.getElementById('id_n');
-                    const NInput = document.getElementById('id_N');
-                    const KInput = document.getElementById('id_K');
-                    if (nInput) nInput.value = '50';
-                    if (NInput) NInput.value = '1000';
-                    if (KInput) KInput.value = Math.round(1000 * parseFloat(rho || 0.1));
+                    const N = 1000;
+                    const p = rho > 0 && rho < 1 ? rho : 0.1;
+                    const K = Math.round(N * p);
+                    const n = Math.min(50, Math.round(N * 0.05));
+                    setInputValue('id_N', N);
+                    setInputValue('id_K', K);
+                    setInputValue('id_n', n);
+                    setInputValue('id_x', '');
+                    setInputValue('id_x_min', '');
+                    setInputValue('id_x_max', '');
+                }
+                // Upload/Data manager page
+                else if (path.includes('/datos/')) {
+                    // No rellenamos nada aqui, se usa el panel de importacion de PostgreSQL
                 }
 
-                // Show success message
+                // Disparar evento para que otros scripts sepan que se selecciono un escenario
                 const event = new CustomEvent('scenario-selected', {
-                    detail: { lambda, mu, rho, wq, w, lq }
+                    detail: { lambda, mu, servidores, rho, wq, w, lq }
                 });
                 document.dispatchEvent(event);
             });
