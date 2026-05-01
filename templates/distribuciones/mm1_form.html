@@ -127,13 +127,15 @@
                     <p class="text-slate-500 text-xs mt-1">Tiempo promedio en el sistema</p>
                 </div>
 
+                {% if results.metrics.show_pn %}
                 <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.5s;">
                     <p class="text-slate-400 text-sm">Probabilidad P{{ results.inputs.n_clients }}</p>
                     <p class="font-display text-2xl font-bold text-white mt-1">{{ results.metrics.pn|floatformat:6 }}</p>
                     <p class="text-teal-400 text-xs mt-1">{{ results.metrics.pn_pct|floatformat:4 }}%</p>
                 </div>
+                {% endif %}
 
-                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.55s;">
+                <div class="animate-slide-up opacity-0 stat-card" style="animation-delay: 0.5s;">
                     <p class="text-slate-400 text-sm">Nivel de ocupacion</p>
                     <p class="font-display text-xl font-bold text-white mt-1">{{ results.interpretation.utilization_level }}</p>
                     <p class="text-slate-500 text-xs mt-1">Basado en la intensidad de trafico</p>
@@ -207,11 +209,13 @@
                                     <td class="py-2 px-3 text-slate-400">1 / (&mu; - &lambda;)</td>
                                     <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.ws|floatformat:6 }}</td>
                                 </tr>
+                                {% if results.metrics.show_pn %}
                                 <tr>
                                     <td class="py-2 px-3 text-white">P{{ results.inputs.n_clients }}</td>
                                     <td class="py-2 px-3 text-slate-400">P0 * &rho;<sup>n</sup></td>
                                     <td class="py-2 px-3 text-right text-teal-400">{{ results.metrics.pn|floatformat:6 }}</td>
                                 </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -234,6 +238,7 @@
                                 <strong class="text-amber-300">{{ results.metrics.ws|floatformat:6 }}</strong> unidades de tiempo en el sistema.
                             </p>
                         </div>
+                        {% if results.metrics.show_pn %}
                         <div class="p-4 rounded-lg bg-slate-800/40 border border-slate-700/60">
                             <p class="text-slate-400 text-sm mb-1">Probabilidad puntual</p>
                             <p class="text-slate-200 text-sm">
@@ -241,6 +246,7 @@
                                 <strong class="text-teal-300">{{ results.metrics.pn_pct|floatformat:4 }}%</strong>.
                             </p>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -301,16 +307,17 @@
     const chartData = {{ chart_data|safe }};
     const probabilityChartData = chartData.probability_chart;
     const congestionChartData = chartData.congestion_chart;
+    const showSelected = probabilityChartData.show_selected !== false;
 
     const probabilityColors = probabilityChartData.probabilities.map((value, index) => {
-        if (index === probabilityChartData.selected_index) {
+        if (showSelected && index === probabilityChartData.selected_index) {
             return 'rgba(20, 184, 166, 0.95)';
         }
         return 'rgba(100, 116, 139, 0.45)';
     });
 
     const probabilityBorders = probabilityChartData.probabilities.map((value, index) => {
-        if (index === probabilityChartData.selected_index) {
+        if (showSelected && index === probabilityChartData.selected_index) {
             return 'rgba(45, 212, 191, 1)';
         }
         return 'rgba(148, 163, 184, 0.55)';

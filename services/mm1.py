@@ -81,7 +81,7 @@ class MM1Calculator:
         ls = self.system_length
         wq = self.queue_waiting_time
         ws = self.system_waiting_time
-        pn = self.probability_n()
+        pn = self.probability_n() if self.n_clients > 0 else None
 
         return {
             'inputs': {
@@ -98,9 +98,10 @@ class MM1Calculator:
                 'ls': self._round(ls),
                 'wq': self._round(wq),
                 'ws': self._round(ws),
-                'pn': self._round(pn),
-                'pn_pct': self._round(pn * 100, 4),
+                'pn': self._round(pn) if pn is not None else None,
+                'pn_pct': self._round(pn * 100, 4) if pn is not None else None,
                 'mu_minus_lambda': self._round(self.service_rate - self.arrival_rate),
+                'show_pn': self.n_clients > 0,
             },
             'interpretation': {
                 'utilization_level': self._utilization_label(),
@@ -130,7 +131,8 @@ class MM1Calculator:
             'labels': labels,
             'probabilities': probabilities,
             'selected_index': self.n_clients,
-            'selected_probability': self._round(self.probability_n() * 100, 4),
+            'selected_probability': self._round(self.probability_n() * 100, 4) if self.n_clients > 0 else None,
+            'show_selected': self.n_clients > 0,
         }
 
     def build_congestion_chart(self) -> Dict[str, Any]:

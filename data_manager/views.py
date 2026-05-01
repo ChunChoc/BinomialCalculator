@@ -1,5 +1,6 @@
 import json
 import io
+import os
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -33,7 +34,14 @@ def _postgres_config_from_form(form):
 
 def upload_view(request):
     upload_form = FileUploadForm()
-    postgres_form = PostgresImportForm()
+    postgres_initial = {
+        'pg_host': os.getenv('PG_HOST', ''),
+        'pg_port': os.getenv('PG_PORT', '5432'),
+        'pg_database': os.getenv('PG_DATABASE', ''),
+        'pg_user': os.getenv('PG_USER', ''),
+        'pg_password': os.getenv('PG_PASSWORD', ''),
+    }
+    postgres_form = PostgresImportForm(initial=postgres_initial)
     column_form = None
     preview_data = None
     columns_info = None
