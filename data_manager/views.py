@@ -11,28 +11,72 @@ import pandas as pd
 from services.data_processor import DataProcessor, DataProcessingError
 from services.model_selector import ModelSelector, DistributionType
 from services.distributions import DistributionFactory, HypergeometricDistribution
+from services.postgres_importer import PostgresConfig, PostgresImporter, PostgresImportError
 from .forms import (
-    FileUploadForm, 
-    ColumnSelectionForm, 
+    FileUploadForm,
+    ColumnSelectionForm,
     CalculationParamsForm,
-    HypergeometricManualForm
+    HypergeometricManualForm,
+    PostgresImportForm,
 )
+
+
+def _postgres_config_from_form(form):
+    return PostgresConfig(
+        host=form.cleaned_data["pg_host"],
+        port=form.cleaned_data["pg_port"],
+        database=form.cleaned_data["pg_database"],
+        user=form.cleaned_data["pg_user"],
+        password=form.cleaned_data.get("pg_password") or "",
+    )
 
 
 def upload_view(request):
     upload_form = FileUploadForm()
+    postgres_form = PostgresImportForm()
     column_form = None
     preview_data = None
     columns_info = None
     file_loaded = False
     analysis = None
-    
+
     if 'dataframe_json' in request.session:
         file_loaded = True
-    
+
     if 'column_analysis' in request.session:
         analysis = request.session['column_analysis']
-    
+
+    if request.method == 'POST' and request.POST.get('source') == 'postgres':
+        postgres_form = PostgresImportForm(request.POST)
+        if postgres_form.is_valid():
+            escenario_id = postgres_form.cleaned_data.get('pg_escenario_id')
+            if not escenario_id:
+                messages.error(request, 'Debe seleccionar un escenario de PostgreSQL')
+            else:
+                try:
+                    config = _postgres_config_from_form(postgres_form)
+                    df = PostgresImporter.fetch_sales_dataframe(config, escenario_id)
+
+                    preview_data = DataProcessor.get_preview_data(df)
+                    columns_info = DataProcessor.get_columns_info(df)
+
+                    request.session['dataframe_json'] = df.to_json()
+                    request.session['columns_info'] = columns_info
+                    request.session['preview_data'] = preview_data
+                    request.session['data_source'] = 'postgres'
+
+                    messages.success(
+                        request,
+                        f'Datos PostgreSQL importados: {len(df)} filas, {len(df.columns)} columnas'
+                    )
+                    return redirect('data_manager:upload')
+                except PostgresImportError as exc:
+                    messages.error(request, str(exc))
+                except Exception as exc:
+                    messages.error(request, f'Error inesperado al importar PostgreSQL: {exc}')
+        else:
+            messages.error(request, 'Revise los datos de conexion a PostgreSQL')
+
     if request.method == 'POST' and request.FILES.get('data_file'):
         upload_form = FileUploadForm(request.POST, request.FILES)
         
@@ -92,11 +136,13 @@ def upload_view(request):
     
     context = {
         'upload_form': upload_form,
+        'postgres_form': postgres_form,
         'column_form': column_form,
         'preview_data': preview_data,
         'columns_info': columns_info,
         'file_loaded': file_loaded,
         'analysis': analysis,
+        'data_source': request.session.get('data_source', 'file'),
         'page_title': 'Gestión de Datos',
         'active_nav': 'data_manager',
     }
@@ -504,8 +550,22 @@ def hypergeometric_view(request):
     return render(request, 'data_manager/hypergeometric.html', context)
 
 
+@require_http_methods(["POST"])
+def postgres_scenarios(request):
+    form = PostgresImportForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({"errors": form.errors}, status=400)
+
+    try:
+        config = _postgres_config_from_form(form)
+        scenarios = PostgresImporter.list_scenarios(config)
+        return JsonResponse({"scenarios": scenarios})
+    except PostgresImportError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+
 def clear_session(request):
-    keys_to_clear = ['dataframe_json', 'columns_info', 'preview_data', 'column_analysis']
+    keys_to_clear = ['dataframe_json', 'columns_info', 'preview_data', 'column_analysis', 'data_source']
     for key in keys_to_clear:
         if key in request.session:
             del request.session[key]

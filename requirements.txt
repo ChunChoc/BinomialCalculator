@@ -1,0 +1,5 @@
+django
+pandas
+scipy
+openpyxl
+psycopg[binary]

@@ -2,7 +2,7 @@
 
 {% block title %}Gestión de Datos - Modelos{% endblock %}
 
-{% block header_subtitle %}Carga y análisis de archivos Excel/CSV{% endblock %}
+{% block header_subtitle %}Carga y análisis desde Excel, CSV o PostgreSQL{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -138,7 +138,66 @@
                     </button>
                 </form>
             </div>
-            
+
+            <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6 glow-purple" style="animation-delay: 0.12s;">
+                <h3 class="font-display text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7c0 1.657 3.582 3 8 3s8-1.343 8-3-3.582-3-8-3-8 1.343-8 3zm0 0v10c0 1.657 3.582 3 8 3s8-1.343 8-3V7"/>
+                    </svg>
+                    Importar desde PostgreSQL
+                </h3>
+
+                <form method="post" id="postgres-import-form" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="source" value="postgres">
+                    {{ postgres_form.pg_escenario_id }}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Host/IP</label>
+                            {{ postgres_form.pg_host }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Puerto</label>
+                            {{ postgres_form.pg_port }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Base de datos</label>
+                        {{ postgres_form.pg_database }}
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Usuario</label>
+                            {{ postgres_form.pg_user }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-1">Password</label>
+                            {{ postgres_form.pg_password }}
+                        </div>
+                    </div>
+
+                    <button type="button" id="pg-load-scenarios-btn" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-violet-300 border border-violet-400/30 hover:bg-violet-500/10 transition-all duration-300">
+                        Buscar escenarios
+                    </button>
+
+                    <div id="pg-scenarios-wrapper" class="hidden">
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Escenario</label>
+                        <select id="pg-scenarios-select" class="input-field">
+                            <option value="">-- Buscar escenarios primero --</option>
+                        </select>
+                    </div>
+
+                    <p id="pg-import-error" class="hidden text-rose-400 text-sm"></p>
+
+                    <button type="submit" id="pg-import-btn" class="btn-primary w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed" disabled>
+                        Importar escenario
+                    </button>
+                </form>
+            </div>
+
             {% if file_loaded %}
             <div class="animate-slide-up opacity-0 glass-panel rounded-xl p-6" style="animation-delay: 0.15s;">
                 <div class="flex items-center justify-between mb-4">
@@ -458,11 +517,11 @@
                     </svg>
                 </div>
                 <h3 class="font-display text-xl font-semibold text-white mb-2">
-                    Carga un Archivo de Datos
+                    Carga Datos para Analizar
                 </h3>
                 <p class="text-slate-400 max-w-md mx-auto">
-                    Sube un archivo Excel (.xlsx, .xls) o CSV para analizar los datos 
-                    y calcular distribuciones automáticamente.
+                    Sube un archivo Excel/CSV o importa un escenario desde PostgreSQL para analizar los datos
+                    y calcular distribuciones automaticamente.
                 </p>
             </div>
             
@@ -522,7 +581,14 @@
     const decisionPreview = document.getElementById('decision-preview');
     const suggestedModel = document.getElementById('suggested-model');
     const decisionReason = document.getElementById('decision-reason');
-    
+    const pgForm = document.getElementById('postgres-import-form');
+    const pgLoadScenariosBtn = document.getElementById('pg-load-scenarios-btn');
+    const pgScenariosWrapper = document.getElementById('pg-scenarios-wrapper');
+    const pgScenariosSelect = document.getElementById('pg-scenarios-select');
+    const pgEscenarioId = document.getElementById('pg-escenario-id');
+    const pgImportBtn = document.getElementById('pg-import-btn');
+    const pgImportError = document.getElementById('pg-import-error');
+
     let analysisData = null;
     
     function formatFileSize(bytes) {
@@ -808,6 +874,54 @@
             }
             
             window.location.href = targetUrl;
+        });
+    }
+
+    if (pgLoadScenariosBtn && pgForm) {
+        pgLoadScenariosBtn.addEventListener('click', function() {
+            pgImportError.classList.add('hidden');
+            pgImportError.textContent = '';
+            pgLoadScenariosBtn.disabled = true;
+            pgLoadScenariosBtn.textContent = 'Buscando...';
+
+            const formData = new FormData(pgForm);
+
+            fetch('{% url "data_manager:api_postgres_scenarios" %}', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok) {
+                    throw new Error(data.error || 'No se pudieron cargar escenarios');
+                }
+
+                pgScenariosSelect.innerHTML = '<option value="">-- Seleccionar escenario --</option>';
+                data.scenarios.forEach(scenario => {
+                    const option = document.createElement('option');
+                    option.value = scenario.id;
+                    option.textContent = `${scenario.nombre} | ejecucion ${scenario.ejecucion_id} | ${scenario.total_unidades} unidades`;
+                    pgScenariosSelect.appendChild(option);
+                });
+                pgScenariosWrapper.classList.remove('hidden');
+            })
+            .catch(error => {
+                pgImportError.textContent = error.message;
+                pgImportError.classList.remove('hidden');
+            })
+            .finally(() => {
+                pgLoadScenariosBtn.disabled = false;
+                pgLoadScenariosBtn.textContent = 'Buscar escenarios';
+            });
+        });
+    }
+
+    if (pgScenariosSelect && pgEscenarioId && pgImportBtn) {
+        pgScenariosSelect.addEventListener('change', function() {
+            pgEscenarioId.value = this.value;
+            pgImportBtn.disabled = !this.value;
+            pgImportBtn.classList.toggle('opacity-50', !this.value);
+            pgImportBtn.classList.toggle('cursor-not-allowed', !this.value);
         });
     }
 })();

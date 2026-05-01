@@ -15,6 +15,46 @@ class FileUploadForm(forms.Form):
     )
 
 
+class PostgresImportForm(forms.Form):
+    pg_host = forms.CharField(
+        label="Host/IP",
+        max_length=255,
+        widget=forms.TextInput(attrs={"class": "input-field", "placeholder": "Ej: 192.168.1.10"}),
+        error_messages={"required": "Debe ingresar el host o IP"},
+    )
+    pg_port = forms.IntegerField(
+        label="Puerto",
+        min_value=1,
+        max_value=65535,
+        initial=5432,
+        widget=forms.NumberInput(attrs={"class": "input-field", "placeholder": "5432"}),
+        error_messages={"required": "Debe ingresar el puerto"},
+    )
+    pg_database = forms.CharField(
+        label="Base de datos",
+        max_length=100,
+        widget=forms.TextInput(attrs={"class": "input-field", "placeholder": "Ej: simulacion"}),
+        error_messages={"required": "Debe ingresar la base de datos"},
+    )
+    pg_user = forms.CharField(
+        label="Usuario",
+        max_length=100,
+        widget=forms.TextInput(attrs={"class": "input-field", "placeholder": "Ej: postgres"}),
+        error_messages={"required": "Debe ingresar el usuario"},
+    )
+    pg_password = forms.CharField(
+        label="Password",
+        required=False,
+        widget=forms.PasswordInput(attrs={"class": "input-field", "placeholder": "Password de PostgreSQL"}),
+    )
+    pg_escenario_id = forms.IntegerField(
+        label="Escenario",
+        required=False,
+        min_value=1,
+        widget=forms.HiddenInput(attrs={"id": "pg-escenario-id"}),
+    )
+
+
 class ColumnSelectionForm(forms.Form):
     column_name = forms.ChoiceField(
         label='Columna para análisis',
